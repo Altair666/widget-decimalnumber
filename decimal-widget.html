@@ -158,7 +158,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.4</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.5</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -380,10 +380,15 @@ const serialCache = {}; // kindCode → Set of used serials
 function computeNextSerials() {
   Object.keys(serialCache).forEach(k => delete serialCache[k]);
   S.components.forEach(c => {
-    const code = c.eskd_kind_code || (c.eskd_kind && c.eskd_kind.code);
-    if (!code) return;
-    if (!serialCache[code]) serialCache[code] = new Set();
-    if (c.serial) serialCache[code].add(String(c.serial).padStart(3,'0'));
+    // decimal_number = "XXXXXX.NNN" — берём напрямую
+    const dn = c.decimal_number || '';
+    const dot = dn.lastIndexOf('.');
+    if (dot === -1) return;
+    const kindCode = dn.slice(0, dot);
+    const serial = dn.slice(dot + 1).padStart(3, '0');
+    if (!kindCode || !serial) return;
+    if (!serialCache[kindCode]) serialCache[kindCode] = new Set();
+    serialCache[kindCode].add(serial);
   });
 }
 
