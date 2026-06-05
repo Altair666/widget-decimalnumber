@@ -158,6 +158,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.3</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -761,6 +762,10 @@ async function addComponent() {
   if (!kind || !serial || !name) return;
   if (!isSerialFree(kind.code, serial)) return;
 
+  const btn = document.getElementById('btnAdd');
+  btn.disabled = true;
+  btn.textContent = 'Сохранение…';
+
   const fields = {
     eskd_kind: kind.id,
     serial: serial,
@@ -770,14 +775,32 @@ async function addComponent() {
 
   try {
     if (typeof grist !== 'undefined') {
-      await grist.selectedTable.create({ fields });
+      // POST — создаём запись
+      const created = await grist.selectedTable.create({ fields });
+      const newId = Array.isArray(created) ? created[0] : (created.id || created);
+
+      // PATCH — перезапускаем trigger-формулу serial на стороне Grist
+      // передаём то же значение eskd_kind, чтобы Grist пересчитал serial
+      if (newId) {
+        try {
+          await grist.selectedTable.update({
+            id: newId,
+            fields: { eskd_kind: kind.id }
+          });
+        } catch(patchErr) {
+          // PATCH не критичен — serial уже передан явно
+          console.warn('PATCH trigger failed:', patchErr);
+        }
+      }
     }
-    // optimistic local update
+
+    // Локальный кэш
     const dn = `${kind.code}.${serial}`;
     if (!serialCache[kind.code]) serialCache[kind.code] = new Set();
     serialCache[kind.code].add(serial);
     S.recent.unshift({ id: Date.now(), decimal_number: dn, name, eskd_kind_name: kind.name });
-    // reset form
+
+    // Сброс формы
     document.getElementById('kindInput').value = '';
     document.getElementById('serialInput').value = '';
     document.getElementById('nameInput').value = '';
@@ -786,12 +809,19 @@ async function addComponent() {
     document.getElementById('kindHint').textContent = 'Выберите 6-значный код вида';
     S.selKind = null; S.selUse = null;
     updatePreview();
-    // flash button
-    const btn = document.getElementById('btnAdd');
+
+    // Визуальное подтверждение
     btn.textContent = '✓ Зарегистрировано';
     btn.style.background = 'var(--grn)';
-    setTimeout(() => { btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Зарегистрировать номер'; btn.style.background=''; }, 2500);
+    setTimeout(() => {
+      btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Зарегистрировать номер';
+      btn.style.background = '';
+      btn.disabled = false;
+    }, 2500);
+
   } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Зарегистрировать номер';
     alert('Ошибка при сохранении: ' + e.message);
   }
 }
