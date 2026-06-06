@@ -140,6 +140,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .err-msg{font-size:11px;color:var(--red);margin-top:2px;display:none}
 .err-msg.on{display:block}
 
+/* Formed number — input styled like name but green */
+.formed-num{font-family:var(--mono);background:var(--grn-bg);border-color:var(--grn-brd);color:var(--grn);font-weight:500;cursor:default}
+.formed-num:focus{background:var(--grn-bg);border-color:var(--grn-brd)}
+
 .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);padding:9px 16px;font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer;transition:opacity .15s,transform .1s;width:100%}
 .btn-add:hover{opacity:.88}
 .btn-add:active{transform:scale(.98)}
@@ -189,7 +193,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.9</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.10</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -267,27 +271,23 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
       <div class="ph"><span class="ph-title">Регистрация компонента</span></div>
       <div class="pb">
 
-        <!-- preview row -->
-        <div class="preview-row">
-          <div class="preview-box">
-            <div class="preview-lbl">Формируемый номер</div>
-            <div class="preview-val" id="prevDN">——————.———</div>
+        <!-- form row: formed number + name -->
+        <div class="form-row" style="margin-bottom:10px">
+          <!-- formed number (read-only, green styled) -->
+          <div class="form-group">
+            <label class="form-label">Формируемый номер</label>
+            <input class="form-input formed-num" id="prevDN" readonly value="——————.———">
           </div>
-          <div class="preview-box next">
-            <div class="preview-lbl">Следующий свободный</div>
-            <div class="preview-val" id="prevNext">—</div>
+          <!-- name -->
+          <div class="form-group">
+            <label class="form-label">Наименование компонента <span style="color:var(--red)">*</span></label>
+            <input class="form-input" id="nameInput" placeholder="Диод Д226А">
           </div>
         </div>
 
         <!-- hint when no kind picked -->
         <div id="kindPickHint" style="font-size:11px;color:var(--tx3);margin-bottom:10px;display:none">
           Выберите вид в блоке «Классификатор ОК ЕСКД» выше
-        </div>
-
-        <!-- name -->
-        <div class="form-group" style="margin-bottom:10px">
-          <label class="form-label">Наименование компонента <span style="color:var(--red)">*</span></label>
-          <input class="form-input" id="nameInput" placeholder="Диод Д226А">
         </div>
 
         <!-- primary_use -->
@@ -769,9 +769,9 @@ function renderRegistered() {
         <th colspan="2" class="group-header">Первичное применение</th>
       </tr>
       <tr class="sub-header">
-        <th>Децимальный №</th>
+        <th>Децимальный номер</th>
         <th style="border-right:1px solid var(--brd2)">Наименование</th>
-        <th>Децимальный №</th>
+        <th>Децимальный номер</th>
         <th>Наименование</th>
       </tr>
     </thead>
@@ -836,14 +836,11 @@ function updatePreview() {
   const nameVal = document.getElementById('nameInput').value.trim();
 
   const prevDN = document.getElementById('prevDN');
-  const prevNext = document.getElementById('prevNext');
   const btnAdd = document.getElementById('btnAdd');
   const hint = document.getElementById('kindPickHint');
 
   if (!kind) {
-    prevDN.textContent = '——————.———';
-    prevDN.className = 'preview-val';
-    prevNext.textContent = '—';
+    prevDN.value = '——————.———';
     btnAdd.disabled = true;
     hint.style.display = 'block';
     return;
@@ -852,17 +849,12 @@ function updatePreview() {
 
   const nxt = nextFreeSerial(kind.code);
   if (!nxt) {
-    prevDN.textContent = `${kind.code}.———`;
-    prevDN.className = 'preview-val';
-    prevNext.textContent = 'Все занято';
+    prevDN.value = 'Все занято';
     btnAdd.disabled = true;
     return;
   }
 
-  const dn = `${kind.code}.${nxt}`;
-  prevDN.textContent = dn;
-  prevDN.className = 'preview-val ready';
-  prevNext.textContent = dn;
+  prevDN.value = `${kind.code}.${nxt}`;
   btnAdd.disabled = !nameVal;
 }
 
