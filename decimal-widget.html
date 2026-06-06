@@ -85,12 +85,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .bc-sep{color:var(--tx3);font-size:11px}
 
 /* Путь выбора — шапка браузера */
-.browse-summary{padding:8px 12px;border-bottom:1px solid var(--brd);background:var(--acc-bg);display:none;gap:6px;align-items:flex-start;flex-direction:column}
+.browse-summary{padding:14px 16px;border-bottom:1px solid var(--brd);background:var(--surf);display:none;gap:16px;align-items:center;flex-direction:row}
 .browse-summary.on{display:flex}
-.bs-code{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--acc);line-height:1}
-.bs-path{display:flex;flex-direction:column;gap:1px}
-.bs-row{font-size:11px;color:var(--tx2);line-height:1.4}
-.bs-row span{color:var(--tx3);font-size:10px;margin-right:4px;text-transform:uppercase;letter-spacing:.06em}
+.bs-code{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--acc);line-height:1;flex-shrink:0;text-align:center;min-width:120px}
+.bs-path{flex:1;min-width:0}
+.bs-row{font-size:15px;color:var(--tx);line-height:1.4}
 
 /* Карточки классов — строки */
 .cls-list{display:flex;flex-direction:column;gap:4px}
@@ -159,11 +158,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 
 /* ── REGISTERED TABLE ── */
-.reg-table{width:100%;border-collapse:collapse;font-size:12px}
-.reg-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;border-bottom:2px solid var(--brd);text-align:left;background:var(--surf2)}
-.reg-table th.group-header{border-bottom:2px solid var(--brd2);padding-bottom:2px}
-.reg-table .sub-header th{font-size:10px;color:var(--tx3);font-weight:500;padding:3px 8px;border-bottom:1px solid var(--brd);background:var(--surf2)}
-.reg-table td{padding:6px 8px;border-bottom:1px solid var(--brd);vertical-align:top}
+.reg-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.reg-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;border-bottom:2px solid var(--brd);text-align:center;background:var(--surf2)}
+.reg-table th.group-header{border-bottom:2px solid var(--brd2);padding-bottom:2px;text-align:center}
+.reg-table .sub-header th{font-size:10px;color:var(--tx3);font-weight:500;padding:3px 8px;border-bottom:1px solid var(--brd);background:var(--surf2);text-align:center}
+.reg-table td{padding:6px 8px;border-bottom:1px solid var(--brd);vertical-align:top;text-align:center}
 .reg-table tr:last-child td{border-bottom:none}
 .reg-table tr:hover td{background:var(--surf2)}
 .reg-dn{font-family:var(--mono);font-size:11px;color:var(--acc)}
@@ -190,7 +189,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.7</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.8</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -279,18 +278,22 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
           <span class="err-msg" id="kindErr">Выберите вид из списка</span>
         </div>
 
-        <div class="form-row">
-          <!-- serial -->
-          <div class="form-group">
-            <label class="form-label">Порядковый номер <span style="color:var(--red)">*</span></label>
-            <input class="form-input" id="serialInput" placeholder="001" maxlength="3" oninput="onSerialInput()">
-            <span class="err-msg" id="serialErr">Номер уже занят или некорректен</span>
+        <!-- preview row right under kind picker -->
+        <div class="preview-row">
+          <div class="preview-box">
+            <div class="preview-lbl">Формируемый номер</div>
+            <div class="preview-val" id="prevDN">——————.———</div>
           </div>
-          <!-- name -->
-          <div class="form-group">
-            <label class="form-label">Наименование компонента <span style="color:var(--red)">*</span></label>
-            <input class="form-input" id="nameInput" placeholder="Диод Д226А">
+          <div class="preview-box next">
+            <div class="preview-lbl">Следующий свободный</div>
+            <div class="preview-val" id="prevNext">—</div>
           </div>
+        </div>
+
+        <!-- name -->
+        <div class="form-group" style="margin-bottom:10px">
+          <label class="form-label">Наименование компонента <span style="color:var(--red)">*</span></label>
+          <input class="form-input" id="nameInput" placeholder="Диод Д226А">
         </div>
 
         <!-- primary_use -->
@@ -301,18 +304,6 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
             <div class="ac-drop" id="useDrop"></div>
           </div>
           <span class="form-hint" id="useHint">Не выбрано</span>
-        </div>
-
-        <!-- preview -->
-        <div class="preview-row">
-          <div class="preview-box">
-            <div class="preview-lbl">Формируемый номер</div>
-            <div class="preview-val" id="prevDN">——————.———</div>
-          </div>
-          <div class="preview-box next">
-            <div class="preview-lbl">Следующий свободный</div>
-            <div class="preview-val" id="prevNext">—</div>
-          </div>
         </div>
 
         <button class="btn-add" id="btnAdd" disabled onclick="addComponent()">
@@ -772,15 +763,21 @@ function renderRegistered() {
   S.components.forEach(c => { byId[c.id] = c; });
 
   body.innerHTML = `<table class="reg-table">
+    <colgroup>
+      <col style="width:25%">
+      <col style="width:25%">
+      <col style="width:25%">
+      <col style="width:25%">
+    </colgroup>
     <thead>
       <tr>
         <th colspan="2" class="group-header" style="border-right:1px solid var(--brd2)">Номенклатура</th>
         <th colspan="2" class="group-header">Первичное применение</th>
       </tr>
       <tr class="sub-header">
-        <th style="width:120px">Децимальный №</th>
+        <th>Децимальный №</th>
         <th style="border-right:1px solid var(--brd2)">Наименование</th>
-        <th style="width:120px">Децимальный №</th>
+        <th>Децимальный №</th>
         <th>Наименование</th>
       </tr>
     </thead>
@@ -828,8 +825,6 @@ function pickKind(kind) {
   document.getElementById('kindInput').value = `${kind.code} — ${kind.name}`;
   document.getElementById('kindHint').textContent = `Вид: ${kind.code}`;
   hideDrop('kindDrop');
-  const nxt = nextFreeSerial(kind.code);
-  if (nxt) document.getElementById('serialInput').value = nxt;
   updatePreview();
   renderRegistered();
 }
@@ -865,31 +860,15 @@ function pickUse(r) {
 }
 
 /* ═══════════════════════════════════
-   FORM — SERIAL VALIDATION
-═══════════════════════════════════ */
-function onSerialInput() {
-  let v = document.getElementById('serialInput').value.replace(/\D/g,'').slice(0,3);
-  document.getElementById('serialInput').value = v;
-  updatePreview();
-}
-
-/* ═══════════════════════════════════
    PREVIEW
 ═══════════════════════════════════ */
 function updatePreview() {
   const kind = S.selKind;
-  const serialRaw = document.getElementById('serialInput').value.trim();
-  const serial = serialRaw.padStart(3,'0');
   const nameVal = document.getElementById('nameInput').value.trim();
 
   const prevDN = document.getElementById('prevDN');
   const prevNext = document.getElementById('prevNext');
   const btnAdd = document.getElementById('btnAdd');
-  const serialErr = document.getElementById('serialErr');
-  const kindErr = document.getElementById('kindErr');
-
-  kindErr.className = 'err-msg' + (S.selKind ? '' : '');
-  serialErr.className = 'err-msg';
 
   if (!kind) {
     prevDN.textContent = '——————.———';
@@ -900,32 +879,19 @@ function updatePreview() {
   }
 
   const nxt = nextFreeSerial(kind.code);
-  prevNext.textContent = nxt ? `${kind.code}.${nxt}` : 'Все занятыx';
-
-  if (!serialRaw) {
+  if (!nxt) {
     prevDN.textContent = `${kind.code}.———`;
     prevDN.className = 'preview-val';
+    prevNext.textContent = 'Все занято';
     btnAdd.disabled = true;
     return;
   }
 
-  // validate serial
-  const isNum = /^\d{1,3}$/.test(serialRaw);
-  const isFree = isSerialFree(kind.code, serial);
-
-  if (!isNum || !isFree) {
-    serialErr.className = 'err-msg on';
-    serialErr.textContent = !isNum ? 'Только цифры (1-999)' : `Номер ${kind.code}.${serial} уже занят`;
-    document.getElementById('serialInput').className = 'form-input err';
-    prevDN.textContent = `${kind.code}.${serial}`;
-    prevDN.className = 'preview-val';
-    btnAdd.disabled = true;
-    return;
-  }
-
-  document.getElementById('serialInput').className = 'form-input';
-  prevDN.textContent = `${kind.code}.${serial}`;
+  // Формируемый номер = следующий свободный
+  const dn = `${kind.code}.${nxt}`;
+  prevDN.textContent = dn;
   prevDN.className = 'preview-val ready';
+  prevNext.textContent = dn;
   btnAdd.disabled = !nameVal;
 }
 
@@ -937,11 +903,11 @@ document.getElementById('nameInput').addEventListener('input', updatePreview);
 ═══════════════════════════════════ */
 async function addComponent() {
   const kind = S.selKind;
-  const serialRaw = document.getElementById('serialInput').value.trim();
-  const serial = serialRaw.padStart(3,'0');
   const name = document.getElementById('nameInput').value.trim();
-  if (!kind || !serial || !name) return;
-  if (!isSerialFree(kind.code, serial)) return;
+  if (!kind || !name) return;
+
+  const serial = nextFreeSerial(kind.code);
+  if (!serial) return;
 
   const btn = document.getElementById('btnAdd');
   btn.disabled = true;
@@ -953,36 +919,50 @@ async function addComponent() {
   };
   if (S.selUse) fields.primary_use = S.selUse.id;
 
+  // Оптимистичное добавление — сразу в локальный state и таблицу
+  const tempId = -Date.now(); // отрицательный id чтобы не пересекаться с реальными
+  const dn = `${kind.code}.${serial}`;
+  const optimisticRecord = {
+    id: tempId,
+    decimal_number: dn,
+    name: name,
+    eskd_kind: kind.id,
+    eskd_kind_name: kind.name,
+    primary_use: S.selUse ? S.selUse.id : 0,
+  };
+  S.components.push(optimisticRecord);
+  if (!serialCache[kind.code]) serialCache[kind.code] = new Set();
+  serialCache[kind.code].add(serial);
+  S.recent.unshift({ id: tempId, decimal_number: dn, name, eskd_kind_name: kind.name });
+
+  // Сразу перерисовываем
+  renderRegistered();
+  renderSidebar();
+
   try {
     if (typeof grist !== 'undefined') {
-      // POST — создаём запись
       const created = await grist.selectedTable.create({ fields });
       const newId = Array.isArray(created) ? created[0] : (created.id || created);
 
-      // PATCH — перезапускаем trigger-формулу serial на стороне Grist
-      // передаём то же значение eskd_kind, чтобы Grist пересчитал serial
+      // PATCH — перезапускаем trigger-формулу serial
       if (newId) {
+        // обновляем id оптимистичной записи на реальный
+        const idx = S.components.findIndex(c => c.id === tempId);
+        if (idx >= 0) S.components[idx].id = newId;
+
         try {
           await grist.selectedTable.update({
             id: newId,
             fields: { eskd_kind: kind.id }
           });
         } catch(patchErr) {
-          // PATCH не критичен — serial уже передан явно
           console.warn('PATCH trigger failed:', patchErr);
         }
       }
     }
 
-    // Локальный кэш
-    const dn = `${kind.code}.${serial}`;
-    if (!serialCache[kind.code]) serialCache[kind.code] = new Set();
-    serialCache[kind.code].add(serial);
-    S.recent.unshift({ id: Date.now(), decimal_number: dn, name, eskd_kind_name: kind.name });
-
     // Сброс формы
     document.getElementById('kindInput').value = '';
-    document.getElementById('serialInput').value = '';
     document.getElementById('nameInput').value = '';
     document.getElementById('useInput').value = '';
     document.getElementById('useHint').textContent = 'Не выбрано';
@@ -990,7 +970,6 @@ async function addComponent() {
     S.selKind = null; S.selUse = null;
     updatePreview();
 
-    // Визуальное подтверждение
     btn.textContent = '✓ Зарегистрировано';
     btn.style.background = 'var(--grn)';
     setTimeout(() => {
@@ -1000,6 +979,13 @@ async function addComponent() {
     }, 2500);
 
   } catch(e) {
+    // Откат оптимистичного добавления при ошибке
+    S.components = S.components.filter(c => c.id !== tempId);
+    serialCache[kind.code].delete(serial);
+    S.recent = S.recent.filter(r => r.id !== tempId);
+    renderRegistered();
+    renderSidebar();
+
     btn.disabled = false;
     btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Зарегистрировать номер';
     alert('Ошибка при сохранении: ' + e.message);
