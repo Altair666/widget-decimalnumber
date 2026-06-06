@@ -83,19 +83,30 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .bc-item:hover{background:var(--surf2)}
 .bc-item.cur{color:var(--tx);font-weight:500;cursor:default}
 .bc-sep{color:var(--tx3);font-size:11px}
-.cls-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:7px}
-.cls-card{border:1px solid var(--brd);border-radius:var(--r2);padding:9px 7px;cursor:pointer;text-align:center;transition:border-color .15s,background .15s,transform .1s;background:var(--surf);display:flex;flex-direction:column;align-items:center;gap:5px}
-.cls-card:hover{border-color:var(--acc);background:var(--acc-bg);transform:translateY(-1px)}
-.cls-card.sel{border-color:var(--acc);background:var(--acc-bg)}
-.cls-icon{width:34px;height:34px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:17px}
-.cls-name{font-size:10px;color:var(--tx2);line-height:1.3}
-.cls-code{font-family:var(--mono);font-size:9px;color:var(--tx3)}
-.sub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:5px;margin-top:8px}
-.sub-card{border:1px solid var(--brd);border-radius:var(--r);padding:6px 9px;cursor:pointer;transition:border-color .15s,background .15s;background:var(--surf);display:flex;align-items:center;gap:6px}
-.sub-card:hover{border-color:var(--acc);background:var(--acc-bg)}
-.sub-card.sel{border-color:var(--acc);background:var(--acc-bg)}
-.sub-code{font-family:var(--mono);font-size:10px;color:var(--acc);flex-shrink:0}
-.sub-name{font-size:11px;color:var(--tx);line-height:1.3}
+
+/* Путь выбора — шапка браузера */
+.browse-summary{padding:8px 12px;border-bottom:1px solid var(--brd);background:var(--acc-bg);display:none;gap:6px;align-items:flex-start;flex-direction:column}
+.browse-summary.on{display:flex}
+.bs-code{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--acc);line-height:1}
+.bs-path{display:flex;flex-direction:column;gap:1px}
+.bs-row{font-size:11px;color:var(--tx2);line-height:1.4}
+.bs-row span{color:var(--tx3);font-size:10px;margin-right:4px;text-transform:uppercase;letter-spacing:.06em}
+
+/* Карточки классов — строки */
+.cls-list{display:flex;flex-direction:column;gap:4px}
+.cls-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--brd);border-radius:var(--r);cursor:pointer;background:var(--surf);transition:border-color .15s,background .15s}
+.cls-row:hover{border-color:var(--acc);background:var(--acc-bg)}
+.cls-row.sel{border-color:var(--acc);background:var(--acc-bg)}
+.cls-row-code{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--acc);flex-shrink:0;min-width:44px}
+.cls-row-name{font-size:13px;color:var(--tx);flex:1;line-height:1.3}
+
+/* Подуровни — чуть компактнее */
+.sub-list{display:flex;flex-direction:column;gap:3px}
+.sub-row{display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid var(--brd);border-radius:var(--r);cursor:pointer;background:var(--surf);transition:border-color .15s,background .15s}
+.sub-row:hover{border-color:var(--acc);background:var(--acc-bg)}
+.sub-row.sel{border-color:var(--acc);background:var(--acc-bg)}
+.sub-row-code{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--acc);flex-shrink:0;min-width:56px}
+.sub-row-name{font-size:12px;color:var(--tx);flex:1;line-height:1.3}
 
 /* ── FORM ── */
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
@@ -158,7 +169,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.5</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.6</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -217,6 +228,10 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
       <div class="ph">
         <span class="ph-title">Классификатор ОК ЕСКД</span>
         <div class="bc" id="bc"></div>
+      </div>
+      <div class="browse-summary" id="browseSummary">
+        <div class="bs-code" id="bsCode"></div>
+        <div class="bs-path" id="bsPath"></div>
       </div>
       <div class="pb" id="browseBody"></div>
     </div>
@@ -561,6 +576,7 @@ function relItem(cls, lbl, r) {
 ═══════════════════════════════════ */
 function renderBrowse() {
   renderBreadcrumb();
+  renderBrowseSummary();
   const body = document.getElementById('browseBody');
   const path = S.browsePath;
 
@@ -570,18 +586,15 @@ function renderBrowse() {
   }
 
   if (!path.length) {
-    // Show classes (2-char codes)
     const classes = S.classifier.filter(r => r.level === 'Класс');
-    body.innerHTML = `<div class="cls-grid">${classes.map((c,i) => `
-      <div class="cls-card" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
-        <div class="cls-icon" style="background:${PALETTE[i%PALETTE.length]}22">${ICONS[c.code]||'📦'}</div>
-        <div class="cls-name">${esc(c.name)}</div>
-        <div class="cls-code">${c.code}</div>
+    body.innerHTML = `<div class="cls-list">${classes.map(c => `
+      <div class="cls-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
+        <span class="cls-row-code">${c.code}</span>
+        <span class="cls-row-name">${esc(c.name)}</span>
       </div>`).join('')}</div>`;
     return;
   }
 
-  // Get children of last path item
   const parentCode = path[path.length-1].code;
   const children = S.classifier.filter(r => r.parent_code === parentCode);
 
@@ -590,16 +603,29 @@ function renderBrowse() {
     return;
   }
 
-  body.innerHTML = `<div class="sub-grid">${children.map(c => `
-    <div class="sub-card" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
-      <span class="sub-code">${c.code}</span>
-      <span class="sub-name">${esc(c.name)}</span>
+  body.innerHTML = `<div class="sub-list">${children.map(c => `
+    <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
+      <span class="sub-row-code">${c.code}</span>
+      <span class="sub-row-name">${esc(c.name)}</span>
     </div>`).join('')}</div>`;
+}
+
+function renderBrowseSummary() {
+  const path = S.browsePath;
+  const summary = document.getElementById('browseSummary');
+  if (!path.length) { summary.className = 'browse-summary'; return; }
+  summary.className = 'browse-summary on';
+  // Полный код = код последнего выбранного уровня
+  document.getElementById('bsCode').textContent = path[path.length-1].code;
+  // Путь: каждый уровень на отдельной строке с меткой
+  const LEVEL_LABELS = ['Класс','Подкласс','Группа','Подгруппа','Вид'];
+  document.getElementById('bsPath').innerHTML = path.map((p,i) =>
+    `<div class="bs-row"><span>${LEVEL_LABELS[i]||p.level}</span>${esc(p.name)}</div>`
+  ).join('');
 }
 
 function browseDrill(code, name, level) {
   S.browsePath.push({code, name, level});
-  // If it's a Вид — autofill kind in form
   if (level === 'Вид') {
     const kind = S.classifier.find(r => r.code === code);
     if (kind) pickKind(kind);
@@ -634,7 +660,7 @@ function onKindInput() {
     r.level === 'Вид' &&
     (r.code.toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q))
   ).slice(0, 30);
-  renderAc('kindDrop', items, i => pickKind(items[i]), S.kindAcIdx);
+  renderAc('kindDrop', items, i => pickKind(items[i]));
   updatePreview();
 }
 
@@ -833,16 +859,19 @@ async function addComponent() {
 /* ═══════════════════════════════════
    AUTOCOMPLETE HELPERS
 ═══════════════════════════════════ */
-function renderAc(dropId, items, onPick, idx) {
+function renderAc(dropId, items, onPick) {
   const drop = document.getElementById(dropId);
   if (!items.length) { hideDrop(dropId); return; }
   drop.innerHTML = items.map((r,i) => `
-    <div class="ac-item ${i===idx?'hov':''}" onmousedown="event.preventDefault()" onclick="(${onPick.toString()})(${i})">
+    <div class="ac-item" data-idx="${i}">
       <span class="ac-code">${esc(r.code)}</span>
       <span class="ac-name">${esc(r.name)}</span>
     </div>`).join('');
-  // store refs for key nav
-  drop.querySelectorAll('.ac-item').forEach((el,i) => { el._rec = items[i]; });
+  drop.querySelectorAll('.ac-item').forEach((el,i) => {
+    el._rec = items[i];
+    el.addEventListener('mousedown', e => { e.preventDefault(); });
+    el.addEventListener('click', () => onPick(i));
+  });
   drop.className = 'ac-drop on';
 }
 
@@ -850,11 +879,15 @@ function renderAcComponents(dropId, items, onPick) {
   const drop = document.getElementById(dropId);
   if (!items.length) { hideDrop(dropId); return; }
   drop.innerHTML = items.map((r,i) => `
-    <div class="ac-item" onmousedown="event.preventDefault()" onclick="(${onPick.toString()})(${i})">
+    <div class="ac-item" data-idx="${i}">
       <span class="ac-code">${esc(r.decimal_number||'')}</span>
       <span class="ac-name">${esc(r.name||'')}</span>
     </div>`).join('');
-  drop.querySelectorAll('.ac-item').forEach((el,i) => { el._rec = items[i]; });
+  drop.querySelectorAll('.ac-item').forEach((el,i) => {
+    el._rec = items[i];
+    el.addEventListener('mousedown', e => { e.preventDefault(); });
+    el.addEventListener('click', () => onPick(i));
+  });
   drop.className = 'ac-drop on';
 }
 
