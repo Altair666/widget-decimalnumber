@@ -177,7 +177,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 
 /* Author avatar */
 .reg-author{padding:6px 8px}
-.avatar{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;color:#fff;font-size:11px;font-weight:600;font-family:var(--sans);cursor:default;position:relative;user-select:none}
+.avatar{display:inline-flex;align-items:center;justify-content:center;width:26px;height:22px;border-radius:5px;color:#fff;font-size:11px;font-weight:600;font-family:var(--sans);cursor:default;position:relative;user-select:none}
 .avatar[data-tooltip]:hover::after{
   content:attr(data-tooltip);
   position:absolute;
@@ -225,7 +225,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.13</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.14</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -819,17 +819,17 @@ function renderRegistered() {
 
   body.innerHTML = `<table class="reg-table">
     <colgroup>
-      <col style="width:22%">
-      <col style="width:23%">
-      <col style="width:22%">
-      <col style="width:23%">
-      <col style="width:10%">
+      <col style="width:23.5%">
+      <col style="width:24%">
+      <col style="width:23.5%">
+      <col style="width:24%">
+      <col style="width:5%">
     </colgroup>
     <thead>
       <tr>
         <th colspan="2" class="group-header" style="border-right:1px solid var(--brd2)">Номенклатура</th>
         <th colspan="2" class="group-header" style="border-right:1px solid var(--brd2)">Первичное применение</th>
-        <th rowspan="2" style="vertical-align:middle">Автор</th>
+        <th rowspan="2" style="vertical-align:middle">Создано</th>
       </tr>
       <tr class="sub-header">
         <th>Децимальный номер</th>
