@@ -175,6 +175,38 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 .reg-use-name{font-size:12px;color:var(--tx2)}
 .reg-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
 
+/* Author avatar */
+.reg-author{padding:6px 8px}
+.avatar{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;color:#fff;font-size:11px;font-weight:600;font-family:var(--sans);cursor:default;position:relative;user-select:none}
+.avatar[data-tooltip]:hover::after{
+  content:attr(data-tooltip);
+  position:absolute;
+  bottom:calc(100% + 6px);
+  right:0;
+  background:var(--tx);
+  color:#fff;
+  padding:6px 10px;
+  border-radius:var(--r);
+  font-size:11px;
+  font-weight:400;
+  white-space:pre;
+  z-index:1000;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+  pointer-events:none;
+  text-align:left;
+  letter-spacing:0;
+}
+.avatar[data-tooltip]:hover::before{
+  content:'';
+  position:absolute;
+  bottom:calc(100% + 1px);
+  right:8px;
+  border:5px solid transparent;
+  border-top-color:var(--tx);
+  z-index:1000;
+  pointer-events:none;
+}
+
 /* ── BROWSER KIND SEARCH ── */
 .browser-search-wrap{padding:8px 12px;position:relative;background:var(--surf)}
 .browser-search-input{width:100%;height:30px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);padding:0 9px 0 30px;font-family:var(--sans);font-size:12px;color:var(--tx);outline:none;transition:border-color .15s}
@@ -193,7 +225,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.12</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.13</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -490,6 +522,24 @@ function selectResult(r) {
 function addRecent(r) {
   S.recent = [r, ...S.recent.filter(x => x.id !== r.id)].slice(0, 8);
   renderSidebar();
+  saveOptions();
+}
+
+function saveOptions() {
+  if (typeof grist === 'undefined') return;
+  try {
+    grist.setOptions({
+      favorites: S.favorites,
+      recent: S.recent.map(r => ({
+        id: r.id,
+        decimal_number: r.decimal_number,
+        name: r.name,
+        eskd_kind_name: r.eskd_kind_name,
+      })),
+    });
+  } catch(e) {
+    console.warn('Failed to save options:', e);
+  }
 }
 
 function closeRel() { S.selResult = null; render(); }
@@ -769,40 +819,58 @@ function renderRegistered() {
 
   body.innerHTML = `<table class="reg-table">
     <colgroup>
-      <col style="width:25%">
-      <col style="width:25%">
-      <col style="width:25%">
-      <col style="width:25%">
+      <col style="width:22%">
+      <col style="width:23%">
+      <col style="width:22%">
+      <col style="width:23%">
+      <col style="width:10%">
     </colgroup>
     <thead>
       <tr>
         <th colspan="2" class="group-header" style="border-right:1px solid var(--brd2)">Номенклатура</th>
-        <th colspan="2" class="group-header">Первичное применение</th>
+        <th colspan="2" class="group-header" style="border-right:1px solid var(--brd2)">Первичное применение</th>
+        <th rowspan="2" style="vertical-align:middle">Автор</th>
       </tr>
       <tr class="sub-header">
         <th>Децимальный номер</th>
         <th style="border-right:1px solid var(--brd2)">Наименование</th>
         <th>Децимальный номер</th>
-        <th>Наименование</th>
+        <th style="border-right:1px solid var(--brd2)">Наименование</th>
       </tr>
     </thead>
     <tbody>
       ${items.map(c => {
-        // primary_use может быть либо ссылкой на запись (число > 0), либо отсутствовать
-        // primary_use_name — либо автоматически из связанной записи, либо свободный текст
         const useId = c.primary_use;
         const linked = (useId && useId > 0) ? byId[useId] : null;
         const useDN = linked ? linked.decimal_number : '';
         const useName = linked ? linked.name : (c.primary_use_name || '');
+        const author = c.created_by || '';
+        const ts = c.created_at;
+        const dateStr = (ts && !isNaN(ts)) ? new Date(ts * 1000).toLocaleString('ru-RU') : '';
+        const initial = author ? author.trim().charAt(0).toUpperCase() : '?';
+        const tooltipText = author
+          ? `${author}${dateStr ? '\n' + dateStr : ''}`
+          : 'Автор неизвестен';
         return `<tr>
           <td class="reg-dn">${esc(c.decimal_number||'—')}</td>
           <td class="reg-name" style="border-right:1px solid var(--brd)">${esc(c.name||'—')}</td>
           <td class="reg-use-dn">${esc(useDN)}</td>
-          <td class="reg-use-name">${esc(useName)}${useName && !linked ? ' <span style="font-size:9px;color:var(--tx3);font-style:italic">(текст)</span>' : ''}</td>
+          <td class="reg-use-name" style="border-right:1px solid var(--brd)">${esc(useName)}${useName && !linked ? ' <span style="font-size:9px;color:var(--tx3);font-style:italic">(текст)</span>' : ''}</td>
+          <td class="reg-author">
+            <div class="avatar" data-tooltip="${esc(tooltipText)}" style="background:${author ? avatarColor(author) : 'var(--brd2)'}">${esc(initial)}</div>
+          </td>
         </tr>`;
       }).join('')}
     </tbody>
   </table>`;
+}
+
+/* Стабильный цвет по имени пользователя */
+function avatarColor(name) {
+  const colors = ['#1E4ED8','#0D6E4E','#92400E','#991B1B','#5B21B6','#0369A1','#166534','#B45309','#7C3AED','#BE185D'];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0;
+  return colors[Math.abs(h) % colors.length];
 }
 
 /* ═══════════════════════════════════
