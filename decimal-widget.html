@@ -256,7 +256,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.24</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.25</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -334,8 +334,16 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
       <div class="ph"><span class="ph-title">Регистрация компонента</span></div>
       <div class="pb">
 
-        <!-- form row: formed number + name -->
-        <div class="form-row" style="margin-bottom:10px">
+        <!-- form row: prefix + formed number + name -->
+        <div style="display:grid;grid-template-columns:90px 1fr 1.4fr;gap:10px;margin-bottom:10px">
+          <!-- org prefix combobox -->
+          <div class="form-group">
+            <label class="form-label">Префикс</label>
+            <input class="form-input" id="prefixInput" list="prefixList" value="ЛМАП." placeholder="ЛМАП." oninput="onPrefixInput()" autocomplete="off">
+            <datalist id="prefixList">
+              <option value="ЛМАП.">
+            </datalist>
+          </div>
           <!-- formed number (read-only, green styled) -->
           <div class="form-group">
             <label class="form-label">Формируемый номер</label>
@@ -496,13 +504,18 @@ const serialCache = {}; // kindCode → Set of used serials
 function computeNextSerials() {
   Object.keys(serialCache).forEach(k => delete serialCache[k]);
   S.components.forEach(c => {
-    // decimal_number = "XXXXXX.NNN" — берём напрямую
+    // decimal_number может быть с префиксом: "ЛМАП.685621.001" или без: "685621.001"
+    // Нам нужен 6-значный код вида (предпоследний сегмент) и serial (последний сегмент)
     const dn = c.decimal_number || '';
-    const dot = dn.lastIndexOf('.');
-    if (dot === -1) return;
-    const kindCode = dn.slice(0, dot);
-    const serial = dn.slice(dot + 1).padStart(3, '0');
-    if (!kindCode || !serial) return;
+    const parts = dn.split('.');
+    if (parts.length < 2) return;
+    const serial = parts[parts.length - 1].padStart(3, '0');
+    // Ищем последний 6-значный сегмент перед serial — это и есть kindCode
+    let kindCode = null;
+    for (let i = parts.length - 2; i >= 0; i--) {
+      if (/^\d{6}$/.test(parts[i])) { kindCode = parts[i]; break; }
+    }
+    if (!kindCode || !/^\d+$/.test(serial)) return;
     if (!serialCache[kindCode]) serialCache[kindCode] = new Set();
     serialCache[kindCode].add(serial);
   });
@@ -912,7 +925,8 @@ function renderRegistered() {
   const kindCode = path[path.length-1].code;
   const items = S.components.filter(c => {
     const dn = c.decimal_number || '';
-    return dn.startsWith(kindCode + '.');
+    // Совпадение по сегменту: либо в начале "685621.", либо после точки ".685621."
+    return dn.startsWith(kindCode + '.') || dn.includes('.' + kindCode + '.');
   }).sort((a,b) => (a.decimal_number||'').localeCompare(b.decimal_number||''));
 
   panel.style.display = 'block';
@@ -1222,6 +1236,7 @@ function pickUse(r) {
 function updatePreview() {
   const kind = S.selKind;
   const nameVal = document.getElementById('nameInput').value.trim();
+  const prefix = (document.getElementById('prefixInput').value || '').trim();
 
   const prevDN = document.getElementById('prevDN');
   const btnAdd = document.getElementById('btnAdd');
@@ -1242,8 +1257,12 @@ function updatePreview() {
     return;
   }
 
-  prevDN.value = `${kind.code}.${nxt}`;
+  prevDN.value = `${prefix}${kind.code}.${nxt}`;
   btnAdd.disabled = !nameVal;
+}
+
+function onPrefixInput() {
+  updatePreview();
 }
 
 // also trigger preview on name input
@@ -1260,29 +1279,30 @@ async function addComponent() {
   const serial = nextFreeSerial(kind.code);
   if (!serial) return;
 
+  const prefix = (document.getElementById('prefixInput').value || '').trim();
+
   const btn = document.getElementById('btnAdd');
   btn.disabled = true;
   btn.textContent = 'Сохранение…';
 
-  // Передаём ТОЛЬКО eskd_kind и name. Формульные поля (serial, decimal_number) Grist считает сам.
+  // Передаём eskd_kind, name, org_prefix. serial и decimal_number — формульные.
   const fields = {
     eskd_kind: kind.id,
     name: name,
+    org_prefix: prefix,
   };
 
-  // primary_use может быть либо ссылкой (id), либо свободным текстом (имя)
+  // primary_use либо ссылка, либо свободный текст
   const useText = document.getElementById('useInput').value.trim();
   if (S.selUse) {
-    // Выбрана конкретная запись — пишем числовой ID в primary_use
     fields.primary_use = S.selUse.id;
   } else if (useText) {
-    // Свободный текст — пишем в primary_use_name, primary_use оставляем пустым
     fields.primary_use_name = useText;
   }
 
   // Оптимистичное добавление
   const tempId = -Date.now();
-  const dn = `${kind.code}.${serial}`;
+  const dn = `${prefix}${kind.code}.${serial}`;
   const optimisticRecord = {
     id: tempId,
     decimal_number: dn,
