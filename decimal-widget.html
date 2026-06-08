@@ -68,12 +68,20 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .res-kind{font-size:11px;color:var(--tx3);flex-shrink:0;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── REL TREE ── */
-.rel-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r);cursor:pointer;transition:background .1s;margin-bottom:3px}
-.rel-item:hover{background:var(--surf2)}
-.rel-item.cur{background:var(--acc-bg);border:1px solid var(--acc-brd)}
-.rel-item.par{background:var(--warn-bg);border-left:3px solid var(--warn);padding-left:7px}
-.rel-item.chd{background:var(--grn-bg);border-left:3px solid var(--grn);padding-left:7px;margin-left:16px}
-.rel-lbl{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;width:56px;flex-shrink:0}
+.tree-root{display:flex;flex-direction:column;gap:2px}
+.tree-node{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--r);border:1px solid transparent;transition:background .1s,border-color .1s}
+.tree-node:hover{background:var(--surf2)}
+.tree-node.target{background:var(--acc-bg);border-color:var(--acc);box-shadow:0 0 0 1px var(--acc-brd)}
+.tree-node.target:hover{background:var(--acc-bg)}
+.tree-node.current{background:var(--warn-bg);border-color:var(--warn-brd)}
+.tree-toggle{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:none;background:transparent;color:var(--tx3);cursor:pointer;flex-shrink:0;padding:0;border-radius:3px}
+.tree-toggle:hover{background:var(--brd);color:var(--tx)}
+.tree-toggle.empty{cursor:default;pointer-events:none}
+.tree-content{display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer}
+.tree-count{font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:10px;padding:0 6px;line-height:14px;min-width:18px;text-align:center;flex-shrink:0}
+.tree-node.target .tree-count{background:var(--acc);color:#fff;border-color:var(--acc)}
+
+/* ── REL TREE — старые элементы для обратной совместимости ── */
 .rel-dn{font-family:var(--mono);font-size:11px;color:var(--tx);flex-shrink:0}
 .rel-nm{font-size:12px;color:var(--tx2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -248,7 +256,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.22</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.23</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -398,6 +406,8 @@ const S = {
   browserKindAcIdx: -1,
   // inline edit для первичного применения в таблице
   editing: null, // { rowId: number, mode: 'ref'|'text', selUse: {id,decimal_number,name}|null }
+  relExpanded: null, // Set<id> — какие узлы дерева раскрыты
+  relRootId: null,   // id корня текущего дерева (для инвалидации при смене)
 };
 
 const ICONS = {'31':'⚡','32':'🔌','33':'💡','34':'🔧','35':'⚙️','36':'🛢️','37':'🔩','38':'📐','39':'🧲','40':'🌡️','41':'🖥️','42':'🏗️','43':'🔬','44':'🚗','45':'✈️','46':'🚢','47':'📦','48':'🔑','49':'🧪','50':'🔭'};
@@ -540,6 +550,11 @@ function doSearch(q) {
 }
 
 function selectResult(r) {
+  // Сброс состояния дерева при смене выбранного компонента
+  if (!S.selResult || S.selResult.id !== r.id) {
+    S.relExpanded = null;
+    S.relRootId = null;
+  }
   S.selResult = r;
   addRecent(r);
   render();
@@ -642,42 +657,111 @@ function renderSearch() {
 }
 
 /* ═══════════════════════════════════
-   REL PANEL
+   REL PANEL — иерархическое дерево
 ═══════════════════════════════════ */
 function renderRel() {
   const r = S.selResult;
   document.getElementById('pRel').style.display = 'block';
   const body = document.getElementById('relBody');
 
-  // parent = primary_use of current
-  const parent = r.primary_use ? S.components.find(x => x.id === r.primary_use) : null;
-  // children = components whose primary_use = r.id
-  const children = S.components.filter(x => x.primary_use === r.id).slice(0, 8);
-  // siblings = same eskd_kind, same primary_use, different id
-  const siblings = S.components.filter(x =>
-    x.id !== r.id &&
-    x.eskd_kind === r.eskd_kind &&
-    x.primary_use === r.primary_use
-  ).slice(0, 6);
-
-  let html = '<div>';
-  if (parent) html += relItem('par','Сборка', parent);
-  html += relItem('cur','Текущий', r);
-  children.forEach(c => { html += relItem('chd','Входит', c); });
-  if (siblings.length) {
-    html += `<div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;padding:8px 0 3px">Смежные компоненты того же вида</div>`;
-    siblings.forEach(s => { html += relItem('','Смежный', s); });
+  // 1. Поднимаемся до корня (компонента без primary_use)
+  let root = r;
+  const visited = new Set([r.id]);
+  while (root.primary_use && root.primary_use > 0) {
+    const parent = S.components.find(x => x.id === root.primary_use);
+    if (!parent) break;
+    if (visited.has(parent.id)) break; // защита от циклов
+    visited.add(parent.id);
+    root = parent;
   }
+
+  // 2. Собираем "путь" от корня до выбранного — эти узлы развернуть автоматически
+  const pathIds = new Set();
+  let cur = r;
+  while (cur) {
+    pathIds.add(cur.id);
+    if (!cur.primary_use || cur.primary_use <= 0) break;
+    const p = S.components.find(x => x.id === cur.primary_use);
+    if (!p || pathIds.has(p.id)) break;
+    cur = p;
+  }
+
+  // 3. Инициализируем S.relExpanded если ещё не было
+  if (!S.relExpanded || S.relRootId !== root.id) {
+    S.relExpanded = new Set(pathIds);
+    // также разворачиваем поддерево выбранного на 1 уровень вниз
+    S.relExpanded.add(r.id);
+    S.relRootId = root.id;
+  }
+
+  // 4. Рендерим рекурсивно от корня
+  let html = '<div class="tree-root">';
+  html += renderTreeNode(root, 0, r.id, new Set());
   html += '</div>';
+
+  // Подсказка если корень = выбранный
+  if (root.id === r.id) {
+    const hasChildren = S.components.some(x => x.primary_use === r.id);
+    if (!hasChildren) {
+      html += `<div style="font-size:11px;color:var(--tx3);padding:8px 0 0;text-align:center;font-style:italic">Компонент не связан с другими записями</div>`;
+    }
+  }
+
   body.innerHTML = html;
 }
 
-function relItem(cls, lbl, r) {
-  return `<div class="rel-item ${cls}" onclick='selectResult(${jstr(r)})'>
-    <span class="rel-lbl">${esc(lbl)}</span>
-    <span class="rel-dn">${esc(r.decimal_number||'—')}</span>
-    <span class="rel-nm">${esc(r.name||'—')}</span>
-  </div>`;
+function renderTreeNode(node, depth, targetId, seen) {
+  if (seen.has(node.id)) {
+    return `<div class="tree-node" style="margin-left:${depth*18}px">
+      <span class="tree-toggle empty"></span>
+      <span class="rel-dn">${esc(node.decimal_number||'')}</span>
+      <span class="rel-nm" style="color:var(--red);font-style:italic">(цикл)</span>
+    </div>`;
+  }
+  const localSeen = new Set(seen); localSeen.add(node.id);
+
+  const children = S.components.filter(x => x.primary_use === node.id);
+  const hasChildren = children.length > 0;
+  const isExpanded = S.relExpanded.has(node.id);
+  const isTarget = node.id === targetId;
+  const isCurrent = S.selResult && S.selResult.id === node.id;
+
+  let cls = 'tree-node';
+  if (isTarget) cls += ' target';
+  if (isCurrent && !isTarget) cls += ' current';
+
+  let html = `<div class="${cls}" style="margin-left:${depth*18}px">`;
+
+  if (hasChildren) {
+    html += `<button class="tree-toggle" onclick="toggleRelNode(${node.id})">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transform:rotate(${isExpanded?90:0}deg);transition:transform .15s">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>`;
+  } else {
+    html += `<span class="tree-toggle empty"></span>`;
+  }
+
+  html += `<span class="tree-content" onclick='selectResult(${jstr(node)})'>
+    <span class="rel-dn">${esc(node.decimal_number||'')}</span>
+    <span class="rel-nm">${esc(node.name||'')}</span>
+    ${hasChildren ? `<span class="tree-count">${children.length}</span>` : ''}
+  </span>`;
+  html += `</div>`;
+
+  if (hasChildren && isExpanded) {
+    children.forEach(ch => {
+      html += renderTreeNode(ch, depth + 1, targetId, localSeen);
+    });
+  }
+
+  return html;
+}
+
+function toggleRelNode(id) {
+  if (S.relExpanded.has(id)) S.relExpanded.delete(id);
+  else S.relExpanded.add(id);
+  renderRel();
 }
 
 /* ═══════════════════════════════════
