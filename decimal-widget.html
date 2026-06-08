@@ -69,7 +69,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 /* ── REL TREE ── */
 .tree-root{display:flex;flex-direction:column;gap:2px}
-.tree-node{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--r);border:1px solid transparent;transition:background .1s,border-color .1s}
+.tree-node{display:flex;align-items:center;gap:6px;padding:5px 8px 5px 8px;border-radius:var(--r);border:1px solid transparent;transition:background .1s,border-color .1s}
 .tree-node:hover{background:var(--surf2)}
 .tree-node.target{background:var(--acc-bg);border-color:var(--acc);box-shadow:0 0 0 1px var(--acc-brd)}
 .tree-node.target:hover{background:var(--acc-bg)}
@@ -256,7 +256,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.23</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.24</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -712,7 +712,7 @@ function renderRel() {
 
 function renderTreeNode(node, depth, targetId, seen) {
   if (seen.has(node.id)) {
-    return `<div class="tree-node" style="margin-left:${depth*18}px">
+    return `<div class="tree-node" style="padding-left:${8 + depth*18}px">
       <span class="tree-toggle empty"></span>
       <span class="rel-dn">${esc(node.decimal_number||'')}</span>
       <span class="rel-nm" style="color:var(--red);font-style:italic">(цикл)</span>
@@ -730,7 +730,7 @@ function renderTreeNode(node, depth, targetId, seen) {
   if (isTarget) cls += ' target';
   if (isCurrent && !isTarget) cls += ' current';
 
-  let html = `<div class="${cls}" style="margin-left:${depth*18}px">`;
+  let html = `<div class="${cls}" style="padding-left:${8 + depth*18}px">`;
 
   if (hasChildren) {
     html += `<button class="tree-toggle" onclick="toggleRelNode(${node.id})">
