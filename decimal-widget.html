@@ -98,15 +98,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .bs-code{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--acc);line-height:1;flex-shrink:0;text-align:center;min-width:120px}
 .bs-path{flex:1;min-width:0}
 .bs-row{font-size:15px;color:var(--tx);line-height:1.4}
+.bs-thumb{flex-shrink:0;max-height:120px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2)}
 
 /* Карточки классов — строки */
 .cls-list{display:flex;flex-direction:column;gap:4px}
-.cls-row{display:flex;align-items:center;gap:12px;padding:7px 10px;border:1px solid var(--brd);border-radius:var(--r);cursor:pointer;background:var(--surf);transition:border-color .15s,background .15s}
+.cls-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--brd);border-radius:var(--r);cursor:pointer;background:var(--surf);transition:border-color .15s,background .15s}
 .cls-row:hover{border-color:var(--acc);background:var(--acc-bg)}
 .cls-row.sel{border-color:var(--acc);background:var(--acc-bg)}
 .cls-row-code{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--acc);flex-shrink:0;min-width:44px}
 .cls-row-name{font-size:13px;color:var(--tx);flex:1;line-height:1.3}
-.cls-row-thumb{width:36px;height:36px;flex-shrink:0;border:1px solid var(--brd);border-radius:var(--r);object-fit:cover;background:var(--surf2)}
 
 /* Подуровни — чуть компактнее */
 .sub-list{display:flex;flex-direction:column;gap:3px}
@@ -115,10 +115,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .sub-row.sel{border-color:var(--acc);background:var(--acc-bg)}
 .sub-row-code{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--acc);flex-shrink:0;min-width:56px}
 .sub-row-name{font-size:12px;color:var(--tx);flex:1;line-height:1.3}
-.sub-row-thumb{width:28px;height:28px;flex-shrink:0;border:1px solid var(--brd);border-radius:4px;object-fit:cover;background:var(--surf2)}
-
-/* Превью в шапке выбора */
-.bs-thumb{width:64px;height:64px;flex-shrink:0;border:1px solid var(--brd);border-radius:var(--r);object-fit:cover;background:var(--surf2)}
 
 /* ── FORM ── */
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
@@ -261,7 +257,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.32</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.33</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -474,12 +470,21 @@ async function loadComponents() {
 async function loadClassifier() {
   if (typeof grist === 'undefined') return;
 
-  // Получаем docId из URL родительского окна Grist (виджет работает в iframe)
+  // Получаем docId через Grist API (надёжнее чем парсить parent URL)
   try {
-    const refUrl = document.referrer || window.parent?.location?.href || '';
-    const m = refUrl.match(/\/doc\/([^/?#]+)/) || refUrl.match(/\/o\/[^/]+\/([^/?#]+)\//);
-    if (m) S.docId = m[1];
-  } catch(e) { /* доступ к parent может быть запрещён CORS — не критично */ }
+    if (grist.docApi.getDocName) {
+      S.docId = await grist.docApi.getDocName();
+    }
+  } catch(e) { /* нестрашно */ }
+  // Fallback — из referrer
+  if (!S.docId) {
+    try {
+      const refUrl = document.referrer || '';
+      const m = refUrl.match(/\/doc\/([^/?#]+)/) || refUrl.match(/\/o\/[^/]+\/([^/?#]+)\//);
+      if (m) S.docId = m[1];
+    } catch(e) {}
+  }
+  console.log('Grist docId:', S.docId);
 
   try {
     const tables = await grist.docApi.listTables();
@@ -501,21 +506,23 @@ async function loadClassifier() {
 /* Построить URL первой картинки из поля Attachments */
 function attachmentUrl(imageField) {
   if (!imageField) return null;
-  // Grist хранит вложения как ['L', id1, id2, ...] либо просто [id, ...]
   let ids = [];
   if (Array.isArray(imageField)) {
     ids = imageField[0] === 'L' ? imageField.slice(1) : imageField;
-  } else if (typeof imageField === 'number') {
+  } else if (typeof imageField === 'number' && imageField > 0) {
     ids = [imageField];
   }
   if (!ids.length || !ids[0]) return null;
   const attId = ids[0];
-  // Относительный путь работает даже в iframe — Grist отдаст файл по тому же origin
+  // Виджет в iframe — origin Grist берём из document.referrer
+  let origin = '';
+  try {
+    if (document.referrer) origin = new URL(document.referrer).origin;
+  } catch(e) {}
   if (S.docId) {
-    return `/api/docs/${S.docId}/attachments/${attId}/download`;
+    return `${origin}/api/docs/${S.docId}/attachments/${attId}/download`;
   }
-  // Fallback — относительный путь от текущего origin
-  return `/api/attachments/${attId}/download`;
+  return `${origin}/api/attachments/${attId}/download`;
 }
 
 function rowsToRecords(rows) {
@@ -839,14 +846,11 @@ function renderBrowse() {
 
   if (!path.length) {
     const classes = S.classifier.filter(r => r.level === 'Класс');
-    body.innerHTML = `<div class="cls-list">${classes.map(c => {
-      const url = attachmentUrl(c.image);
-      return `<div class="cls-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
+    body.innerHTML = `<div class="cls-list">${classes.map(c => `
+      <div class="cls-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
         <span class="cls-row-code">${c.code}</span>
-        ${url ? `<img class="cls-row-thumb" src="${url}" onerror="this.style.display='none'">` : ''}
         <span class="cls-row-name">${esc(c.name)}</span>
-      </div>`;
-    }).join('')}</div>`;
+      </div>`).join('')}</div>`;
     return;
   }
 
@@ -858,14 +862,11 @@ function renderBrowse() {
     return;
   }
 
-  body.innerHTML = `<div class="sub-list">${children.map(c => {
-    const url = attachmentUrl(c.image);
-    return `<div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
+  body.innerHTML = `<div class="sub-list">${children.map(c => `
+    <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
       <span class="sub-row-code">${c.code}</span>
-      ${url ? `<img class="sub-row-thumb" src="${url}" onerror="this.style.display='none'">` : ''}
       <span class="sub-row-name">${esc(c.name)}</span>
-    </div>`;
-  }).join('')}</div>`;
+    </div>`).join('')}</div>`;
 }
 
 function renderBrowseSummary() {
