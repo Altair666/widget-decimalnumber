@@ -257,7 +257,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.36</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.37</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -506,19 +506,18 @@ async function loadClassifier() {
       const rows = await grist.docApi.fetchTable('ESKD_Classifier');
       S.classifier = rowsToRecords(rows);
       S.classifier.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
-      // Отладка — показать какие колонки есть в записях
+      // Отладка: что приходит в поле image
       if (S.classifier.length) {
         console.log('Колонки ESKD_Classifier:', Object.keys(S.classifier[0]));
-        // Найдём запись с base64 и покажем превью значения
-        const withImg = S.classifier.find(r =>
-          r.image_base64 || r.image_b64 || r.imageBase64 || r.thumbnail
-        );
+        const withImg = S.classifier.find(r => firstAttachmentId(r.image));
         if (withImg) {
-          const key = ['image_base64','image_b64','imageBase64','thumbnail'].find(k => withImg[k]);
-          const val = String(withImg[key]||'');
-          console.log(`Найдено поле ${key}, длина=${val.length}, начало:`, val.slice(0,60));
+          const attId = firstAttachmentId(withImg.image);
+          console.log(`Запись с картинкой: code=${withImg.code}, image=`, withImg.image, `→ attId=${attId}`);
+          if (S.accessToken && S.tokenBaseUrl) {
+            console.log('Тестовый URL картинки:', `${S.tokenBaseUrl}/attachments/${attId}/download?auth=${S.accessToken.slice(0,20)}…`);
+          }
         } else {
-          console.warn('Ни одной из колонок image_base64/image_b64/imageBase64/thumbnail не найдено или они пустые');
+          console.warn('Ни одна запись не содержит вложение в поле image');
         }
       }
       setConn(true, `${S.classifier.length} видов`);
@@ -532,25 +531,16 @@ async function loadClassifier() {
   renderAll();
 }
 
-/* Получить URL картинки уровня: сначала из base64-колонки, потом через fetch вложения */
+/* Получить URL картинки уровня через access token */
 async function getImageUrl(rec) {
   if (!rec) return null;
-
-  // 1. Пробуем base64 из текстовых колонок (имя может различаться)
-  const b64 = rec.image_base64 || rec.image_b64 || rec.imageBase64 || rec.thumbnail || null;
-  if (b64 && typeof b64 === 'string' && b64.length > 20) {
-    // Если строка уже с data: префиксом — используем как есть
-    if (b64.startsWith('data:')) return b64;
-    // Иначе предполагаем PNG и оборачиваем
-    return `data:image/png;base64,${b64}`;
-  }
-
-  // 2. Fallback — fetch вложения с токеном
   const attId = firstAttachmentId(rec.image);
-  if (attId) {
-    return await fetchAttachmentBlobUrl(attId);
-  }
+  if (!attId) return null;
 
+  // Через access token — штатный путь Grist Widget API
+  if (S.accessToken && S.tokenBaseUrl) {
+    return `${S.tokenBaseUrl}/attachments/${attId}/download?auth=${S.accessToken}`;
+  }
   return null;
 }
 
