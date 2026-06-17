@@ -257,7 +257,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.44</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.45</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -414,10 +414,14 @@ const S = {
   kindAcIdx: -1,
   useAcIdx: -1,
   browserKindAcIdx: -1,
-  // inline edit для первичного применения в таблице
-  editing: null, // { rowId: number, mode: 'ref'|'text', selUse: {id,decimal_number,name}|null }
+  // inline edit
+  editing: null, // { rowId: number, mode: 'ref'|'text'|'compName', selUse: ... }
   relExpanded: null, // Set<id> — какие узлы дерева раскрыты
   relRootId: null,   // id корня текущего дерева (для инвалидации при смене)
+  // lazy classifier
+  classifierMode: 'full',       // 'lazy' | 'full'
+  classifierLoadedParents: null, // Set<string> — какие parent_code уже загружены
+  classifierLoading: false,      // true пока грузится уровень
   docId: null,       // id документа Grist (для построения URL вложений)
   accessToken: null, // токен для доступа к API (вложения)
   tokenBaseUrl: null,// базовый URL для API с токеном
@@ -558,21 +562,42 @@ async function loadClassifier() {
     } catch(e) {}
   })();
 
-  // Попытка 1 — лёгкая загрузка через SQL без image_base64 (если получится — быстрее в разы)
+  // Ждём токен (до 1.5с)
+  for (let i = 0; i < 30 && !S.accessToken; i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+
+  // Попытка 1 — ленивая загрузка: только классы верхнего уровня
+  if (S.accessToken && S.tokenBaseUrl) {
+    const classes = await fetchClassifierByParent(null);
+    if (classes && classes.length) {
+      S.classifierMode = 'lazy';
+      S.classifierLoadedParents = new Set(['']);
+      S.classifier = classes;
+      S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
+      console.log(`[ESKD_Classifier lazy] ${classes.length} классов за ${Math.round(performance.now()-t0)}мс`);
+      setConn(true, `${classes.length} классов`);
+      renderAll();
+      fetchAllImagesInBackground();
+      return;
+    }
+  }
+
+  // Попытка 2 — SQL полный (без картинок)
   const light = await tryFetchClassifierLight();
   if (light && light.length) {
+    S.classifierMode = 'full';
     S.classifier = light;
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
-    console.log(`[ESKD_Classifier light SQL] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
+    console.log(`[ESKD_Classifier full SQL] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
     setConn(true, `${S.classifier.length} видов`);
     setTimeout(saveToCache, 0);
     renderAll();
-    // Картинки догружаем в фоне отдельным запросом
     fetchAllImagesInBackground();
     return;
   }
 
-  // Попытка 2 — обычный fetchTable (полный, с картинками)
+  // Попытка 3 — fetchTable (полный, с картинками)
   try {
     const tables = await grist.docApi.listTables();
     if (!tables.includes('ESKD_Classifier')) {
@@ -580,10 +605,11 @@ async function loadClassifier() {
       return;
     }
     const rows = await grist.docApi.fetchTable('ESKD_Classifier');
+    S.classifierMode = 'full';
     S.classifier = rowsToRecords(rows);
-    extractImages(S.classifier); // выделяем картинки в Map, очищаем в массиве
+    extractImages(S.classifier);
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
-    console.log(`[ESKD_Classifier full] ${S.classifier.length} (${Object.keys(imagesByCode).length} картинок) за ${Math.round(performance.now()-t0)}мс`);
+    console.log(`[ESKD_Classifier fetchTable] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
     setConn(true, `${S.classifier.length} видов`);
     setTimeout(saveToCache, 0);
     renderAll();
@@ -622,6 +648,100 @@ async function tryFetchClassifierLight() {
     console.warn('[SQL] не сработал:', e.message);
     return null;
   }
+}
+
+/* Загрузить записи по parent_code; null = верхний уровень (Классы) */
+async function fetchClassifierByParent(parentCode) {
+  if (!S.accessToken || !S.tokenBaseUrl) return null;
+  try {
+    let sql, url;
+    if (parentCode === null) {
+      sql = "SELECT id, code, name, level, parent_code FROM ESKD_Classifier WHERE level = 'Класс'";
+      url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&auth=${S.accessToken}`;
+    } else {
+      sql = 'SELECT id, code, name, level, parent_code FROM ESKD_Classifier WHERE parent_code = ?';
+      url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&args=${encodeURIComponent(JSON.stringify([parentCode]))}&auth=${S.accessToken}`;
+    }
+    const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.records || []).map(r => ({
+      id: r.id,
+      code: r.fields?.code ?? r.code,
+      name: r.fields?.name ?? r.name,
+      level: r.fields?.level ?? r.level,
+      parent_code: r.fields?.parent_code ?? r.parent_code,
+    }));
+  } catch(e) { console.warn('[SQL lazy]', e.message); return null; }
+}
+
+/* Подгрузить детей узла если ещё не загружены */
+async function ensureChildrenLoaded(parentCode) {
+  if (S.classifierMode === 'full') return;
+  if (!S.classifierLoadedParents) S.classifierLoadedParents = new Set();
+  if (S.classifierLoadedParents.has(parentCode)) return;
+
+  S.classifierLoading = true;
+  renderBrowse();
+
+  const children = await fetchClassifierByParent(parentCode);
+  S.classifierLoading = false;
+
+  if (children) {
+    const existingCodes = new Set(S.classifier.map(r => r.code));
+    children.forEach(r => { if (!existingCodes.has(r.code)) S.classifier.push(r); });
+    S.classifierLoadedParents.add(parentCode);
+    S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
+    console.log(`[lazy] +${children.length} для '${parentCode}'`);
+  } else {
+    S.classifierLoadedParents.add(parentCode);
+  }
+}
+
+/* SQL-поиск видов для ленивого режима */
+async function searchClassifierKinds(q) {
+  if (!S.accessToken || !S.tokenBaseUrl) {
+    return S.classifier.filter(r =>
+      r.level === 'Вид' &&
+      (r.code.toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q))
+    ).slice(0, 30);
+  }
+  try {
+    const pattern = `%${q}%`;
+    const sql = "SELECT id, code, name, level, parent_code FROM ESKD_Classifier WHERE level = 'Вид' AND (LOWER(code) LIKE ? OR LOWER(name) LIKE ?) LIMIT 30";
+    const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&args=${encodeURIComponent(JSON.stringify([pattern, pattern]))}&auth=${S.accessToken}`;
+    const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const records = (data.records || []).map(r => ({
+      id: r.id, code: r.fields?.code ?? r.code, name: r.fields?.name ?? r.name,
+      level: r.fields?.level ?? r.level, parent_code: r.fields?.parent_code ?? r.parent_code,
+    }));
+    const existingCodes = new Set(S.classifier.map(r => r.code));
+    records.forEach(r => { if (!existingCodes.has(r.code)) S.classifier.push(r); });
+    return records;
+  } catch(e) {
+    return S.classifier.filter(r =>
+      r.level === 'Вид' &&
+      (r.code.toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q))
+    ).slice(0, 30);
+  }
+}
+
+/* Загрузить один узел по code (для построения пути в ленивом режиме) */
+async function fetchClassifierNodeByCode(code) {
+  if (!S.accessToken || !S.tokenBaseUrl) return null;
+  try {
+    const sql = 'SELECT id, code, name, level, parent_code FROM ESKD_Classifier WHERE code = ? LIMIT 1';
+    const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&args=${encodeURIComponent(JSON.stringify([code]))}&auth=${S.accessToken}`;
+    const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const rec = (data.records || [])[0];
+    if (!rec) return null;
+    return { id: rec.id, code: rec.fields?.code ?? rec.code, name: rec.fields?.name ?? rec.name,
+      level: rec.fields?.level ?? rec.level, parent_code: rec.fields?.parent_code ?? rec.parent_code };
+  } catch(e) { return null; }
 }
 
 /* Догрузить все картинки в фоне (одним запросом) */
@@ -1027,6 +1147,10 @@ function renderBrowse() {
   const body = document.getElementById('browseBody');
   const path = S.browsePath;
 
+  if (S.classifierLoading) {
+    body.innerHTML = `<div class="empty" style="color:var(--tx3)">Загрузка…</div>`;
+    return;
+  }
   if (!S.classifier.length) {
     body.innerHTML = `<div class="empty">Классификатор не загружен.<br>Проверьте таблицу ESKD_Classifier в Grist.</div>`;
     return;
@@ -1101,11 +1225,13 @@ function renderBrowseSummary() {
   }
 }
 
-function browseDrill(code, name, level) {
+async function browseDrill(code, name, level) {
   S.browsePath.push({code, name, level});
   if (level === 'Вид') {
     const kind = S.classifier.find(r => r.code === code);
     if (kind) pickKind(kind);
+  } else {
+    await ensureChildrenLoaded(code);
   }
   renderBrowse();
   renderRegistered();
@@ -1131,17 +1257,23 @@ function renderBreadcrumb() {
 }
 
 /* ── Browser kind search ── */
-function onBrowserKindInput() {
+async function onBrowserKindInput() {
   const q = document.getElementById('browserKindInput').value.trim().toLowerCase();
   if (!q) { hideDrop('browserKindDrop'); return; }
-  const items = S.classifier.filter(r =>
-    r.level === 'Вид' &&
-    (r.code.toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q))
-  ).slice(0, 30);
-  renderAc('browserKindDrop', items, i => {
+
+  let items;
+  if (S.classifierMode === 'lazy') {
+    items = await searchClassifierKinds(q);
+  } else {
+    items = S.classifier.filter(r =>
+      r.level === 'Вид' &&
+      (r.code.toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q))
+    ).slice(0, 30);
+  }
+
+  renderAc('browserKindDrop', items, async i => {
     pickKind(items[i]);
-    // build browse path for selected kind
-    buildPathForKind(items[i]);
+    await buildPathForKind(items[i]);
     document.getElementById('browserKindInput').value = '';
     hideDrop('browserKindDrop');
     renderBrowse();
@@ -1150,12 +1282,12 @@ function onBrowserKindInput() {
 }
 
 function onBrowserKindKey(e) {
-  acKey(e, 'browserKindDrop', S, 'browserKindAcIdx', () => {
+  acKey(e, 'browserKindDrop', S, 'browserKindAcIdx', async () => {
     const items = getVisibleAcItems('browserKindDrop');
     if (S.browserKindAcIdx >= 0 && items[S.browserKindAcIdx]) {
       const kind = items[S.browserKindAcIdx]._rec;
       pickKind(kind);
-      buildPathForKind(kind);
+      await buildPathForKind(kind);
       document.getElementById('browserKindInput').value = '';
       hideDrop('browserKindDrop');
       renderBrowse();
@@ -1164,15 +1296,21 @@ function onBrowserKindKey(e) {
   });
 }
 
-function buildPathForKind(kind) {
-  // Строим путь от корня до вида через parent_code
+async function buildPathForKind(kind) {
   const path = [];
   let current = kind;
   while (current) {
     path.unshift({ code: current.code, name: current.name, level: current.level });
-    current = current.parent_code
-      ? S.classifier.find(r => r.code === current.parent_code)
-      : null;
+    if (!current.parent_code) break;
+    let parent = S.classifier.find(r => r.code === current.parent_code);
+    if (!parent && S.classifierMode === 'lazy') {
+      parent = await fetchClassifierNodeByCode(current.parent_code);
+      if (parent) {
+        const existingCodes = new Set(S.classifier.map(r => r.code));
+        if (!existingCodes.has(parent.code)) S.classifier.push(parent);
+      }
+    }
+    current = parent || null;
   }
   S.browsePath = path;
 }
@@ -1247,6 +1385,7 @@ function renderRegistered() {
         const editing = S.editing && S.editing.rowId === c.id;
         const editingDN = editing && S.editing.mode === 'ref';
         const editingName = editing && S.editing.mode === 'text';
+        const editingCompName = editing && S.editing.mode === 'compName';
 
         // Ячейка децимального номера ПП
         let dnCell;
@@ -1294,9 +1433,30 @@ function renderRegistered() {
           </div>`;
         }
 
+        // Ячейка наименования компонента (Номенклатура)
+        let compNameCell;
+        if (editingCompName) {
+          compNameCell = `<div class="cell-content">
+            <input class="cell-edit-input" id="editCompNameInput-${c.id}" placeholder="Наименование…" autocomplete="off" value="${esc(c.name||'')}" onkeydown="onEditKey(event,${c.id})">
+            <button class="cell-edit-btn save" onclick="saveEditCompName(${c.id})" title="Сохранить">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </button>
+            <button class="cell-edit-btn cancel" onclick="cancelEdit()" title="Отмена">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>`;
+        } else {
+          compNameCell = `<div class="cell-content">
+            <span class="cell-text" style="text-align:left">${esc(c.name||'—')}</span>
+            <button class="cell-edit-btn" onclick="startEditCompName(${c.id})" title="Редактировать">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </button>
+          </div>`;
+        }
+
         return `<tr>
           <td class="reg-dn">${esc(c.decimal_number||'—')}</td>
-          <td class="reg-name" style="border-right:1px solid var(--brd)">${esc(c.name||'—')}</td>
+          <td class="editable-cell" style="border-right:1px solid var(--brd);text-align:left">${compNameCell}</td>
           <td class="editable-cell">${dnCell}</td>
           <td class="editable-cell" style="border-right:1px solid var(--brd)">${nameCell}</td>
           <td class="reg-author">
@@ -1307,16 +1467,14 @@ function renderRegistered() {
     </tbody>
   </table>`;
 
-  // После рендера — если есть активный edit, ставим фокус на input
+  // После рендера — ставим фокус на активный input
   if (S.editing) {
     const id = S.editing.rowId;
-    const inputId = S.editing.mode === 'ref' ? `editDNInput-${id}` : `editNameInput-${id}`;
+    const inputId = S.editing.mode === 'ref' ? `editDNInput-${id}`
+      : S.editing.mode === 'compName' ? `editCompNameInput-${id}`
+      : `editNameInput-${id}`;
     const el = document.getElementById(inputId);
-    if (el) {
-      el.focus();
-      const val = el.value;
-      el.setSelectionRange(val.length, val.length);
-    }
+    if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
   }
 }
 
@@ -1333,9 +1491,35 @@ function startEditName(rowId) {
   renderRegistered();
 }
 
+function startEditCompName(rowId) {
+  S.editing = { rowId, mode: 'compName' };
+  renderRegistered();
+}
+
 function cancelEdit() {
   S.editing = null;
   renderRegistered();
+}
+
+async function saveEditCompName(rowId) {
+  if (!S.editing) return;
+  const text = (document.getElementById(`editCompNameInput-${rowId}`)?.value || '').trim();
+  if (!text) return;
+  S.editing = null;
+
+  const idx = S.components.findIndex(c => c.id === rowId);
+  if (idx >= 0) S.components[idx].name = text;
+  renderRegistered();
+
+  try {
+    if (typeof grist !== 'undefined') {
+      await grist.selectedTable.update({ id: rowId, fields: { name: text } });
+      loadComponents();
+    }
+  } catch(e) {
+    alert('Ошибка сохранения: ' + e.message);
+    loadComponents();
+  }
 }
 
 function onEditDNInput(rowId) {
@@ -1386,6 +1570,8 @@ function onEditKey(e, rowId) {
   } else if (e.key === 'Enter') {
     if (S.editing.mode === 'ref') {
       if (S.editing.selUse) saveEditDN(rowId);
+    } else if (S.editing.mode === 'compName') {
+      saveEditCompName(rowId);
     } else {
       saveEditName(rowId);
     }
