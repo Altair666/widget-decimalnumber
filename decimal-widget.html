@@ -9,7 +9,7 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#F5F4F0;--surf:#FFF;--surf2:#EEECEA;--surf3:#E4E2DC;
+  --bg:#F0F8F2;--surf:#FFF;--surf2:#E8F4EC;--surf3:#DDEEE3;
   --brd:#DEDAD2;--brd2:#C4C0B6;
   --tx:#18170F;--tx2:#6A6860;--tx3:#9E9C94;
   --acc:#1E4ED8;--acc-bg:#EEF2FF;--acc-brd:#C7D2FE;
@@ -257,7 +257,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.42</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.43</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -449,6 +449,7 @@ function loadFromCache() {
     if (!raw) return false;
     const data = JSON.parse(raw);
     if (!data || !Array.isArray(data.classifier) || !data.classifier.length) return false;
+    if (Date.now() - data.timestamp > CACHE_TTL) return false;
     S.classifier = data.classifier;
     const ageSec = Math.round((Date.now() - data.timestamp) / 1000);
     console.log(`[cache] классификатор: ${S.classifier.length} записей, возраст ${ageSec}с`);
@@ -1287,7 +1288,6 @@ function renderRegistered() {
         } else {
           // Карандаш в наименовании доступен только если нет ссылки
           const nameEditBtn = hasLink ? '' : `<button class="cell-edit-btn" onclick="startEditName(${c.id})" title="Редактировать"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>`;
-          const textWithMark = useName + (useName && !linked ? ' <span style="font-size:9px;color:var(--tx3);font-style:italic">(текст)</span>' : '');
           nameCell = `<div class="cell-content">
             <span class="cell-text reg-use-name">${esc(useName)}${useName && !linked ? ' <span style="font-size:9px;color:var(--tx3);font-style:italic">(текст)</span>' : ''}</span>
             ${nameEditBtn}
@@ -1697,7 +1697,7 @@ function renderAcComponents(dropId, items, onPick) {
   drop.className = 'ac-drop on';
 }
 
-function hideDrop(dropId) { document.getElementById(dropId).className = 'ac-drop'; }
+function hideDrop(dropId) { const el = document.getElementById(dropId); if (el) el.className = 'ac-drop'; }
 
 function getVisibleAcItems(dropId) {
   return [...document.getElementById(dropId).querySelectorAll('.ac-item')];
@@ -1730,7 +1730,8 @@ document.addEventListener('click', e => {
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function hi(s, q) {
   if (!q) return esc(s);
-  return esc(s).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), m => `<mark>${m}</mark>`);
+  const escapedQ = esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return esc(s).replace(new RegExp(escapedQ,'gi'), m => `<mark>${m}</mark>`);
 }
 function jstr(r) {
   try { return JSON.stringify(r).replace(/'/g,"&#39;"); } catch(e) { return '{}'; }
