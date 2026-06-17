@@ -257,7 +257,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 <!-- TOPBAR -->
 <header class="topbar">
   <span class="logo">ОК ЕСКД</span>
-  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.46</span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4px;padding:1px 7px;flex-shrink:0">v0.47</span>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
@@ -568,14 +568,29 @@ async function loadClassifier() {
   }
 
   // Попытка 1 — ленивая загрузка: только классы (SQL или fetchTable с фильтром)
-  const classes = await fetchClassifierByParent(null);
-  if (classes && classes.length) {
+  const lazyResult = await fetchClassifierByParent(null);
+
+  // Если fetchTable вернул все записи без фильтрации — сразу full mode, не тратим время повторно
+  if (lazyResult && lazyResult._fullLoad) {
+    S.classifierMode = 'full';
+    S.classifier = lazyResult.all;
+    extractImages(S.classifier);
+    S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
+    console.log(`[ESKD_Classifier full] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
+    setConn(true, `${S.classifier.length} видов`);
+    setTimeout(saveToCache, 0);
+    renderAll();
+    return;
+  }
+
+  // Ленивый режим — получили только классы
+  if (lazyResult && lazyResult.length) {
     S.classifierMode = 'lazy';
     S.classifierLoadedParents = new Set(['']);
-    S.classifier = classes;
+    S.classifier = lazyResult;
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
-    console.log(`[ESKD_Classifier lazy] ${classes.length} классов за ${Math.round(performance.now()-t0)}мс`);
-    setConn(true, `${classes.length} классов`);
+    console.log(`[ESKD_Classifier lazy] ${lazyResult.length} классов за ${Math.round(performance.now()-t0)}мс`);
+    setConn(true, `${lazyResult.length} классов`);
     renderAll();
     fetchAllImagesInBackground();
     return;
@@ -649,8 +664,9 @@ async function tryFetchClassifierLight() {
 }
 
 /* Загрузить записи по parent_code; null = верхний уровень (Классы).
-   Вариант А: SQL с параметрами (кириллица через args).
-   Вариант Б: fetchTable с фильтром (если SQL недоступен). */
+   Возвращает: массив записей | { _fullLoad: true, all: [...] } | null
+   _fullLoad означает: SQL недоступен, fetchTable вернул все записи без фильтрации —
+   нужно переключиться в full mode и переиспользовать эти данные. */
 async function fetchClassifierByParent(parentCode) {
   // Вариант А: SQL (параметризованный — кириллица через args, не инлайн)
   if (S.accessToken && S.tokenBaseUrl) {
@@ -672,13 +688,28 @@ async function fetchClassifierByParent(parentCode) {
     } catch(e) { console.warn('[SQL lazy]', e.message); }
   }
 
-  // Вариант Б: fetchTable с фильтром (без SQL)
+  // Вариант Б: fetchTable (с фильтром или без — зависит от версии Grist)
   if (typeof grist !== 'undefined') {
     try {
       const filter = parentCode === null ? { level: ['Класс'] } : { parent_code: [parentCode] };
       const rows = await grist.docApi.fetchTable('ESKD_Classifier', { filters: filter });
-      const records = rowsToRecords(rows);
-      if (records.length) { console.log(`[fetchTable lazy] ${records.length} для '${parentCode}'`); return records; }
+      const all = rowsToRecords(rows);
+      if (!all.length) return null;
+
+      // Проверяем: фильтр сработал или вернулись все записи?
+      const filtered = parentCode === null
+        ? all.filter(r => r.level === 'Класс')
+        : all.filter(r => String(r.parent_code) === String(parentCode));
+
+      if (filtered.length && filtered.length === all.length) {
+        // Фильтр сработал — ленивый режим
+        console.log(`[fetchTable lazy] ${filtered.length} для '${parentCode}'`);
+        return filtered;
+      } else if (filtered.length < all.length) {
+        // Фильтр проигнорирован — вернулись все записи. Сигнализируем full mode.
+        console.log(`[fetchTable full] ${all.length} записей (фильтр не поддерживается)`);
+        return { _fullLoad: true, all };
+      }
     } catch(e) { console.warn('[fetchTable lazy]', e.message); }
   }
 
