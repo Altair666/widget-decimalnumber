@@ -2,7 +2,7 @@
   "name": "@gristlabs/widget-decimalnumber",
   "description": "БД деталей по ОК ЕСКД",
   "homePage": "https://github.com/gristlabs/grist-widget",
-  "version": "0.44.0",
+  "version": "0.45.0",
   "grist": {
     "name": "Decimal Number",
     "url": "https://gristlabs.github.io/grist-widget/decimalnumber_grist/decimal-widget.html",
@@ -11,12 +11,7 @@
     "accessLevel": "full",
     "renderAfterReady": true,
     "description": "База данных децимальных номеров под детали и сборки с классификатором ОК ЕСКД",
-    "authors": [
-      {
-        "name": "Altair666",
-        "url": "https://github.com/Altair666"
-      }
-    ],
+    "authors": [{"name": "Altair666","url": "https://github.com/Altair666"}],
     "isGristLabsMaintained": true
   }
 }
