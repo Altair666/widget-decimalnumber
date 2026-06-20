@@ -9,7 +9,7 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#f7f7f7;--surf:#FFF;--surf2:#f7f7f7;--surf3:#E4E2DC;
+  --bg:#f7f7f7;--surf:#FFF;--surf2:#f7f7f7;--surf3:#e5e5e5;
   --brd:#DEDAD2;--brd2:#C4C0B6;
   --tx:#18170F;--tx2:#6A6860;--tx3:#9E9C94;
   --acc:#1E4ED8;--acc-bg:#EEF2FF;--acc-brd:#C7D2FE;
@@ -28,7 +28,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tabbar{display:flex;align-items:flex-end}
 .tab-btn{font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);background:var(--surf2);border:1px solid var(--brd);border-bottom:1px solid var(--brd);border-radius:0;padding:6px 18px;cursor:pointer;transition:background .1s,color .1s;margin-bottom:-1px}
 .tab-btn:hover{background:var(--surf3);color:var(--tx)}
-.tab-btn.active{background:var(--bg);color:var(--acc);border-bottom-color:var(--bg);font-weight:700;z-index:2}
+.tab-btn.active{background:var(--bg);color:var(--tx);border-bottom-color:var(--bg);font-weight:700;z-index:2}
 .search-wrap{flex:1;position:relative;max-width:380px}
 .search-wrap svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none}
 .search-input{width:100%;height:30px;border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:0 28px 0 30px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;transition:border-color .15s,background .15s}
@@ -109,7 +109,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 /* Карточки классов — строки */
 .cls-list{display:flex;flex-direction:column;gap:4px}
 .cls-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--brd);border-radius:var(--r);cursor:pointer;background:var(--surf);transition:border-color .15s,background .15s}
-.cls-row:hover{border-color:var(--acc);background:var(--acc-bg)}
+.cls-row:hover{border-color:var(--brd2);background:var(--surf3)}
 .cls-row.sel{border-color:var(--acc);background:var(--acc-bg)}
 .cls-row-code{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--acc);flex-shrink:0;min-width:44px}
 .cls-row-name{font-size:13px;color:var(--tx);flex:1;line-height:1.3}
@@ -117,7 +117,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 /* Подуровни — чуть компактнее */
 .sub-list{display:flex;flex-direction:column;gap:3px}
 .sub-row{display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid var(--brd);border-radius:var(--r);cursor:pointer;background:var(--surf);transition:border-color .15s,background .15s}
-.sub-row:hover{border-color:var(--acc);background:var(--acc-bg)}
+.sub-row:hover{border-color:var(--brd2);background:var(--surf3)}
 .sub-row.sel{border-color:var(--acc);background:var(--acc-bg)}
 .sub-row-code{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--acc);flex-shrink:0;min-width:56px}
 .sub-row-name{font-size:12px;color:var(--tx);flex:1;line-height:1.3}
@@ -406,7 +406,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 </main>
 </div>
 
-<footer class="ver-footer">v0.60</footer>
+<footer class="ver-footer">v0.61</footer>
 
 <script>
 /* ═══════════════════════════════════
