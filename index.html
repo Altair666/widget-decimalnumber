@@ -23,10 +23,10 @@
 html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;color:var(--tx);background:var(--bg)}
 
 /* ── LAYOUT ── */
-.app{display:grid;grid-template-columns:200px 1fr;grid-template-rows:44px 1fr;height:100vh;overflow:hidden}
+.app{display:grid;grid-template-columns:200px 1fr;grid-template-rows:auto 1fr;height:100vh;overflow:hidden}
 .topbar{grid-column:2;grid-row:1;background:var(--bg);border-bottom:1px solid var(--brd);display:flex;align-items:flex-end;justify-content:space-between;padding:0 12px 0 0}
 .tabbar{display:flex;align-items:flex-end}
-.tab-btn{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);background:var(--surf2);border:1px solid var(--brd);border-bottom:1px solid var(--brd);border-radius:var(--r2) var(--r2) 0 0;padding:6px 18px;cursor:pointer;transition:background .1s,color .1s;margin-bottom:-1px}
+.tab-btn{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);background:var(--surf2);border:1px solid var(--brd);border-bottom:1px solid var(--brd);border-radius:0;padding:6px 18px;cursor:pointer;transition:background .1s,color .1s;margin-bottom:-1px}
 .tab-btn:hover{background:var(--surf3);color:var(--tx)}
 .tab-btn.active{background:var(--bg);color:var(--acc);border-bottom-color:var(--bg);font-weight:700;z-index:2}
 .search-wrap{flex:1;position:relative;max-width:380px}
@@ -58,7 +58,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .main{grid-column:2;grid-row:2;overflow-y:auto;padding:0;display:flex;flex-direction:column;gap:0}
 
 /* ── PANELS ── */
-.panel{background:var(--surf);border:1px solid var(--brd);border-radius:var(--r2);overflow:hidden}
+.panel{background:var(--surf);border:1px solid var(--brd);border-radius:0;overflow:hidden}
 .ph{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--brd);background:var(--surf2)}
 .ph-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2)}
 .pb{padding:10px 12px}
@@ -287,7 +287,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:1.5px}
 <main class="main" id="main">
 
   <!-- SEARCH MODE (вкладка «Структура изделия») -->
-  <div id="pSearch" style="display:none;flex-direction:column;gap:10px">
+  <div id="pSearch" style="display:none;flex-direction:column;gap:0">
 
     <div class="panel">
       <div class="pb">
@@ -320,7 +320,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:1.5px}
   </div>
 
   <!-- BROWSE MODE -->
-  <div id="pBrowse" style="display:flex;flex-direction:column;gap:10px">
+  <div id="pBrowse" style="display:flex;flex-direction:column;gap:0">
 
     <!-- ESKD browser -->
     <div class="panel">
@@ -405,7 +405,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:1.5px}
 </main>
 </div>
 
-<footer class="ver-footer">v0.52</footer>
+<footer class="ver-footer">v0.53</footer>
 
 <script>
 /* ═══════════════════════════════════
