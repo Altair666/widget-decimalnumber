@@ -39,7 +39,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .conn-dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0}
 .conn-dot.ok{background:var(--grn)}
 .conn-lbl{font-size:11px;color:var(--tx3)}
-.topbar-status{display:flex;align-items:center;gap:6px;padding:0 0 9px}
+.topbar-status{display:flex;align-items:center;gap:6px;align-self:center;padding:0}
 .ver-footer{position:fixed;right:10px;bottom:6px;font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:3px;padding:1px 7px;z-index:10}
 
 /* ── SIDEBAR ── */
@@ -61,7 +61,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .panel{background:var(--surf);border:1px solid var(--brd);border-radius:0;overflow:hidden}
 #pSearch>.panel:first-child,#pBrowse>.panel:first-child{border-top:none}
 #pBrowse>.panel:first-child>.ph,#pSearch>.panel:first-child>.ph{background:var(--bg)}
-.ph{display:flex;align-items:center;justify-content:space-between;min-height:28px;padding:8px 12px;border-bottom:1px solid var(--brd);background:var(--surf2)}
+.ph{display:flex;align-items:center;justify-content:space-between;height:32px;padding:0 12px;border-bottom:1px solid var(--brd);background:var(--surf2)}
 .ph-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2)}
 .pb{padding:10px 12px}
 
@@ -406,7 +406,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:1.5px}
 </main>
 </div>
 
-<footer class="ver-footer">v0.57</footer>
+<footer class="ver-footer">v0.58</footer>
 
 <script>
 /* ═══════════════════════════════════
