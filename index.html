@@ -52,6 +52,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .sb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .sb-name{font-size:12px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-code{font-family:var(--mono);font-size:10px;color:var(--tx3)}
+.sb-fav-code{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--tx)}
 .sb-divider{height:1px;background:var(--brd);margin:6px 12px}
 
 /* ── MAIN ── */
@@ -407,7 +408,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 </main>
 </div>
 
-<footer class="ver-footer">v0.64</footer>
+<footer class="ver-footer">v0.65</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -418,7 +419,6 @@ const S = {
   classifier: [],   // ESKD_Classifier records
   components: [],   // Components records
   recent: [],
-  favorites: [],
   searchQ: '',
   selResult: null,
   // browse
@@ -518,7 +518,6 @@ function initGrist() {
 
   grist.onOptions(opts => {
     if (!opts) return;
-    if (opts.favorites) S.favorites = opts.favorites;
     if (opts.recent) S.recent = opts.recent;
     renderSidebar();
   });
@@ -1018,7 +1017,6 @@ function saveOptions() {
   if (typeof grist === 'undefined') return;
   try {
     grist.setOptions({
-      favorites: S.favorites,
       recent: S.recent.map(r => ({
         id: r.id,
         decimal_number: r.decimal_number,
@@ -1064,14 +1062,25 @@ function renderAll() { renderSidebar(); render(); }
 /* ═══════════════════════════════════
    SIDEBAR
 ═══════════════════════════════════ */
+function computeTopKinds() {
+  const counts = {};
+  S.components.forEach(c => {
+    const code = extractKindCodeFromDN(c.decimal_number);
+    if (!code) return;
+    counts[code] = (counts[code] || 0) + 1;
+  });
+  return Object.keys(counts)
+    .sort((a, b) => counts[b] - counts[a])
+    .slice(0, 5);
+}
+
 function renderSidebar() {
   const favEl = document.getElementById('favList');
   const recEl = document.getElementById('recentList');
-  favEl.innerHTML = S.favorites.length
-    ? S.favorites.map((f,i) => `<div class="sb-item" onclick="goTo(${f.id})">
-        <div class="sb-dot" style="background:${PALETTE[i%PALETTE.length]}"></div>
-        <span class="sb-name">${esc(f.name||f.decimal_number)}</span>
-        <span class="sb-code">${esc(f.decimal_number)}</span>
+  const topKinds = computeTopKinds();
+  favEl.innerHTML = topKinds.length
+    ? topKinds.map(code => `<div class="sb-item" onclick="goToKindCode('${code}')">
+        <span class="sb-fav-code">${esc(code)}</span>
       </div>`).join('')
     : `<div style="padding:4px 12px;font-size:11px;color:var(--tx3)">Нет избранного</div>`;
 
@@ -1110,6 +1119,10 @@ function extractKindCodeFromDN(dn) {
 async function openKindForComponent(r) {
   const code = extractKindCodeFromDN(r.decimal_number);
   if (!code) return;
+  await goToKindCode(code);
+}
+
+async function goToKindCode(code) {
   let kind = S.classifier.find(k => k.code === code && k.level === 'Вид');
   if (!kind) {
     kind = await fetchClassifierNodeByCode(code);
@@ -1119,6 +1132,7 @@ async function openKindForComponent(r) {
     }
   }
   if (!kind) return;
+  if (S.activeTab !== 'reg') switchTab('reg');
   pickKind(kind);
   await buildPathForKind(kind);
   renderBrowse();
