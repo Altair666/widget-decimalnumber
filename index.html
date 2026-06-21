@@ -52,7 +52,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .sb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .sb-name{font-size:12px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-code{font-family:var(--mono);font-size:10px;color:var(--tx3)}
-.sb-fav-code{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--tx)}
+.sb-fav-code{font-family:var(--mono);font-size:12px;font-weight:400;color:var(--tx);margin-left:3ch}
 .sb-divider{height:1px;background:var(--brd);margin:6px 12px}
 
 /* ── MAIN ── */
@@ -277,8 +277,8 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 <!-- SIDEBAR -->
 <aside class="sidebar">
   <div class="sb-section">
-    <div class="sb-lbl">⭐ Избранное</div>
-    <div id="favList"><div style="padding:4px 12px;font-size:11px;color:var(--tx3)">Нет избранного</div></div>
+    <div class="sb-lbl">⭐ Популярное</div>
+    <div id="favList"><div style="padding:4px 12px;font-size:11px;color:var(--tx3)">Нет данных</div></div>
   </div>
   <div class="sb-divider"></div>
   <div class="sb-section">
@@ -408,7 +408,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 </main>
 </div>
 
-<footer class="ver-footer">v0.65</footer>
+<footer class="ver-footer">v0.66</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -1082,7 +1082,7 @@ function renderSidebar() {
     ? topKinds.map(code => `<div class="sb-item" onclick="goToKindCode('${code}')">
         <span class="sb-fav-code">${esc(code)}</span>
       </div>`).join('')
-    : `<div style="padding:4px 12px;font-size:11px;color:var(--tx3)">Нет избранного</div>`;
+    : `<div style="padding:4px 12px;font-size:11px;color:var(--tx3)">Нет данных</div>`;
 
   recEl.innerHTML = S.recent.length
     ? S.recent.map(r => `<div class="sb-item" onclick="goTo(${r.id})">
