@@ -408,7 +408,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.69</footer>
+<footer class="ver-footer">v0.70</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -455,11 +455,14 @@ const imagesByCode = {};
 
 /* Заполнить карту картинок из массива записей классификатора */
 function extractImages(records) {
+  let cnt = 0;
   records.forEach(r => {
     if (r.image_file_id && r.image_file_id > 0) {
-      imagesByCode[r.code] = IMAGE_API + r.image_file_id;
+      imagesByCode[r.code] = IMAGE_API + Math.round(r.image_file_id);
+      cnt++;
     }
   });
+  console.log(`[images] extractImages: найдено ${cnt} из ${records.length} записей`);
 }
 
 /* Мгновенно отрисовать классификатор из localStorage если есть */
@@ -589,7 +592,6 @@ async function loadClassifier() {
     extractImages(S.classifier);
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
     console.log(`[ESKD_Classifier full] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
-    setConn(true, `Загрузка…`);
     setTimeout(saveToCache, 0);
     renderAll();
     return;
@@ -602,7 +604,6 @@ async function loadClassifier() {
     S.classifier = lazyResult;
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
     console.log(`[ESKD_Classifier lazy] ${lazyResult.length} классов за ${Math.round(performance.now()-t0)}мс`);
-    setConn(true, `${lazyResult.length} классов`);
     renderAll();
     fetchAllImagesInBackground();
     return;
@@ -615,7 +616,6 @@ async function loadClassifier() {
     S.classifier = light;
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
     console.log(`[ESKD_Classifier full SQL] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
-    setConn(true, `Загрузка…`);
     setTimeout(saveToCache, 0);
     renderAll();
     fetchAllImagesInBackground();
@@ -635,7 +635,6 @@ async function loadClassifier() {
     extractImages(S.classifier);
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
     console.log(`[ESKD_Classifier fetchTable] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
-    setConn(true, `Загрузка…`);
     setTimeout(saveToCache, 0);
     renderAll();
   } catch(e) {
@@ -824,10 +823,12 @@ async function fetchAllImagesInBackground() {
     const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
     if (!res.ok) return;
     const data = await res.json();
-    (data.records || []).forEach(r => {
+    const imgRecords = data.records || [];
+    console.log(`[images bg SQL] вернул ${imgRecords.length} записей, пример:`, imgRecords[0]);
+    imgRecords.forEach(r => {
       const code = r.fields?.code ?? r.code;
       const fid = r.fields?.image_file_id ?? r.image_file_id;
-      if (code && fid && fid > 0) imagesByCode[code] = IMAGE_API + fid;
+      if (code && fid && fid > 0) imagesByCode[code] = IMAGE_API + Math.round(fid);
     });
     console.log(`[images bg] ${Object.keys(imagesByCode).length} картинок за ${Math.round(performance.now()-t0)}мс`);
     renderBrowseSummary();
@@ -848,7 +849,7 @@ async function fetchImageForCode(code) {
     const data = await res.json();
     const rec = (data.records || [])[0];
     const fid = rec?.fields?.image_file_id ?? rec?.image_file_id ?? 0;
-    const imgUrl = fid > 0 ? IMAGE_API + fid : '';
+    const imgUrl = fid > 0 ? IMAGE_API + Math.round(fid) : '';
     imagesByCode[code] = imgUrl;
     return imgUrl || null;
   } catch(e) {
@@ -861,7 +862,7 @@ function getImageUrl(rec) {
   if (!rec) return null;
   const cached = imagesByCode[rec.code];
   if (cached) return cached;
-  if (rec.image_file_id && rec.image_file_id > 0) return IMAGE_API + rec.image_file_id;
+  if (rec.image_file_id && rec.image_file_id > 0) return IMAGE_API + Math.round(rec.image_file_id);
   return null;
 }
 
@@ -1326,9 +1327,24 @@ function renderBrowseSummary() {
     if (!thumb) {
       thumb = document.createElement('img');
       thumb.className = 'bs-thumb';
-      thumb.onerror = () => { thumb.style.display = 'none'; };
+      thumb.onerror = async () => {
+        const failedSrc = thumb.src;
+        console.warn('[img] не загрузилась:', failedSrc, '— пробую fetch...');
+        try {
+          const res = await fetch(failedSrc, { credentials: 'include' });
+          if (res.ok) {
+            const blob = await res.blob();
+            thumb.onerror = () => { thumb.style.display = 'none'; };
+            thumb.src = URL.createObjectURL(blob);
+            return;
+          }
+          console.warn('[img] fetch тоже не удался:', res.status);
+        } catch(e) { console.warn('[img] fetch ошибка:', e.message); }
+        thumb.style.display = 'none';
+      };
       summary.appendChild(thumb);
     }
+    console.log('[img] загружаю:', url);
     thumb.src = url;
     thumb.style.display = '';
   } else if (curRec && S.accessToken && imagesByCode[cur.code] === undefined) {
