@@ -408,7 +408,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.68</footer>
+<footer class="ver-footer">v0.69</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -510,7 +510,9 @@ function initGrist() {
   grist.ready({ requiredAccess: 'full' });
   setConn(true, 'Загрузка…');
 
-  grist.getUserProfile().then(p => { S.currentUser = p; }).catch(() => {});
+  if (typeof grist.getUserProfile === 'function') {
+    grist.getUserProfile().then(p => { S.currentUser = p; }).catch(() => {});
+  }
 
   grist.onRecords(() => {
     if (firstComponentsLoadDone) loadComponents();
