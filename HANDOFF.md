@@ -1,9 +1,10 @@
-# HANDOFF — widget-decimalnumber
+﻿# HANDOFF — widget-decimalnumber
 
 ## История версий
 
 | Версия | Дата | Изменения |
 |--------|------|-----------|
-| v0.70 | 2026-07-03 | Исправлен индикатор подключения: убраны `setConn` вызовы из успешных путей `loadClassifier`, теперь только `loadComponents` выставляет счётчик компонентов. Диагностические логи для загрузки картинок. Fallback через `fetch` + blob URL если `img.src` не грузится. `Math.round` для `image_file_id`. |
-| v0.69 | 2026-07 | Hotfix: guard `grist.getUserProfile` — не вызывать если метода нет. |
-| v0.68 | 2026-07 | Фикс автора при оптимистичном добавлении. Sidebar «Последние» вычисляется из S.components. Индикатор подключения перенесён в левый нижний бабл. Счётчик компонентов вместо видов. Картинки через image_file_id → fileAPI URL. |
+| v0.71 | 2026-07-03 | Возвращены картинки в строки классов: img тег в cls-row через image_file_id → fileAPI URL. fetchAllImagesInBackground теперь вызывает renderBrowse() вместо renderBrowseSummary(). |
+| v0.70 | 2026-07-03 | Fix conn bubble: убраны setConn из loadClassifier успешных путей. Диагностические логи для картинок. Fallback через fetch+blob. |
+| v0.69 | 2026-07 | Hotfix: guard grist.getUserProfile. |
+| v0.68 | 2026-07 | Sidebar «Последние» из S.components. Conn bubble слева внизу. Картинки через image_file_id. |

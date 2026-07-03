@@ -112,6 +112,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .cls-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--brd);border-radius:var(--r);cursor:pointer;background:var(--surf);transition:border-color .15s,background .15s}
 .cls-row:hover{border-color:var(--brd2);background:var(--surf3)}
 .cls-row.sel{border-color:var(--acc);background:var(--acc-bg)}
+.cls-row-img{height:44px;width:44px;object-fit:contain;flex-shrink:0;border-radius:3pt;background:var(--surf2)}
 .cls-row-code{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--tx);flex-shrink:0;min-width:44px}
 .cls-row-name{font-size:13px;color:var(--tx);flex:1;line-height:1.3}
 
@@ -408,7 +409,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.70</footer>
+<footer class="ver-footer">v0.71</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -831,7 +832,7 @@ async function fetchAllImagesInBackground() {
       if (code && fid && fid > 0) imagesByCode[code] = IMAGE_API + Math.round(fid);
     });
     console.log(`[images bg] ${Object.keys(imagesByCode).length} картинок за ${Math.round(performance.now()-t0)}мс`);
-    renderBrowseSummary();
+    renderBrowse();
   } catch(e) {
     console.warn('[images bg] не сработали:', e.message);
   }
@@ -1284,11 +1285,11 @@ function renderBrowse() {
 
   if (!path.length) {
     const classes = S.classifier.filter(r => r.level === 'Класс');
-    body.innerHTML = `<div class="cls-list">${classes.map(c => `
-      <div class="cls-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
-        <span class="cls-row-code">${c.code}</span>
-        <span class="cls-row-name">${esc(c.name)}</span>
-      </div>`).join('')}</div>`;
+    body.innerHTML = `<div class="cls-list">${classes.map(c => {
+      const imgUrl = getImageUrl(c);
+      const imgHtml = imgUrl ? `<img class="cls-row-img" src="${imgUrl}" alt="" onerror="this.style.display='none'">` : '';
+      return `<div class="cls-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">${imgHtml}<span class="cls-row-code">${c.code}</span><span class="cls-row-name">${esc(c.name)}</span></div>`;
+    }).join('')}</div>`;
     return;
   }
 
