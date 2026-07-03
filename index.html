@@ -43,7 +43,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .conn-footer{position:fixed;left:10px;bottom:6px;display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:1px 7px;z-index:10}
 
 /* ── SIDEBAR ── */
-.sidebar{grid-column:1;grid-row:1/-1;background:var(--surf);border-right:1px solid var(--brd);overflow-y:auto;padding:10px 0;display:flex;flex-direction:column;gap:0}
+.sidebar{grid-column:1;grid-row:1/-1;background:var(--surf);border-right:1px solid var(--brd);overflow:visible;position:relative}
+.sidebar-inner{overflow-y:auto;height:100%;padding:10px 0;display:flex;flex-direction:column;gap:0;box-sizing:border-box}
 .sb-section{margin-bottom:12px}
 .sb-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);padding:0 12px 5px}
 .sb-item{display:flex;align-items:center;gap:7px;padding:4px 12px;cursor:pointer;transition:background .1s}
@@ -247,6 +248,9 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   z-index:1000;
   pointer-events:none;
 }
+/* Тултип для аватарки в сайдбаре — прижат к правому краю, не выходит за границу */
+.sb-avatar[data-tooltip]:hover::after{left:auto;right:0;transform:none}
+.sb-avatar[data-tooltip]:hover::before{left:auto;right:8px;transform:none}
 
 /* ── BROWSER KIND SEARCH ── */
 .browser-search-wrap{padding:8px 12px;position:relative;background:var(--surf)}
@@ -273,14 +277,16 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
-  <div class="sb-section">
-    <div class="sb-lbl">⭐ Популярное</div>
-    <div id="favList"><div style="padding:4px 12px;font-size:11px;color:var(--tx3)">Нет данных</div></div>
-  </div>
-  <div class="sb-divider"></div>
-  <div class="sb-section">
-    <div class="sb-lbl">🕐 Последние</div>
-    <div id="recentList"><div style="padding:4px 12px;font-size:11px;color:var(--tx3)">—</div></div>
+  <div class="sidebar-inner">
+    <div class="sb-section">
+      <div class="sb-lbl">⭐ Популярное</div>
+      <div id="favList"><div style="padding:4px 12px;font-size:11px;color:var(--tx3)">Нет данных</div></div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-section">
+      <div class="sb-lbl">🕐 Последние</div>
+      <div id="recentList"><div style="padding:4px 12px;font-size:11px;color:var(--tx3)">—</div></div>
+    </div>
   </div>
 </aside>
 
@@ -409,7 +415,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.72</footer>
+<footer class="ver-footer">v0.73</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -1079,9 +1085,8 @@ function renderSidebar() {
         return `<div class="sb-item" onclick="goTo(${r.id})">
           <div style="flex:1;min-width:0;overflow:hidden">
             <div class="sb-fav-code" style="margin-left:0">${esc(r.decimal_number||'—')}</div>
-            ${dateStr ? `<div class="sb-code">${dateStr}</div>` : ''}
           </div>
-          <div class="avatar" data-tooltip="${esc(tooltipText)}" style="background:${bgColor};flex-shrink:0">${esc(initials)}</div>
+          <div class="avatar sb-avatar" data-tooltip="${esc(tooltipText)}" style="background:${bgColor};flex-shrink:0">${esc(initials)}</div>
         </div>`;
       }).join('')
     : `<div style="padding:4px 12px;font-size:11px;color:var(--tx3)">—</div>`;
@@ -1667,6 +1672,19 @@ async function saveEditCompName(rowId) {
   }
 }
 
+function positionDrop(drop) {
+  requestAnimationFrame(() => {
+    const rect = drop.getBoundingClientRect();
+    if (rect.bottom > window.innerHeight - 8) {
+      drop.style.top = 'auto';
+      drop.style.bottom = '100%';
+    } else {
+      drop.style.top = '';
+      drop.style.bottom = '';
+    }
+  });
+}
+
 function onEditDNInput(rowId) {
   const input = document.getElementById(`editDNInput-${rowId}`);
   const q = input.value.trim().toLowerCase();
@@ -1675,7 +1693,7 @@ function onEditDNInput(rowId) {
   document.getElementById(`editSaveBtn-${rowId}`).disabled = true;
 
   const drop = document.getElementById(`editDNDrop-${rowId}`);
-  if (!q) { drop.className = 'cell-edit-drop'; return; }
+  if (!q) { drop.className = 'cell-edit-drop'; drop.style.top = ''; drop.style.bottom = ''; return; }
 
   const items = S.components.filter(r =>
     r.id !== rowId && // нельзя сослаться на себя
@@ -1683,7 +1701,7 @@ function onEditDNInput(rowId) {
      (r.name||'').toLowerCase().includes(q))
   ).slice(0, 20);
 
-  if (!items.length) { drop.className = 'cell-edit-drop'; return; }
+  if (!items.length) { drop.className = 'cell-edit-drop'; drop.style.top = ''; drop.style.bottom = ''; return; }
 
   drop.innerHTML = items.map((r,i) => `
     <div class="ac-item" data-idx="${i}" style="text-align:left">
@@ -1696,6 +1714,7 @@ function onEditDNInput(rowId) {
     el.addEventListener('click', () => pickEditDN(rowId, items[i]));
   });
   drop.className = 'cell-edit-drop on';
+  positionDrop(drop);
 }
 
 function pickEditDN(rowId, rec) {
