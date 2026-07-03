@@ -409,7 +409,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.71</footer>
+<footer class="ver-footer">v0.72</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -1068,13 +1068,20 @@ function renderSidebar() {
   const recent = computeRecentComponents();
   recEl.innerHTML = recent.length
     ? recent.map(r => {
-        const dateStr = r.created_at ? new Date(r.created_at * 1000).toLocaleDateString('ru-RU') : '';
+        const ts = r.created_at;
+        const dateStr = (ts && !isNaN(ts)) ? new Date(ts * 1000).toLocaleDateString('ru-RU') : '';
         const author = r.created_by || '';
+        const initials = avatarInitials(author);
+        const bgColor = author ? avatarColor(author) : 'var(--brd2)';
+        const tooltipText = author
+          ? `${author}${dateStr ? '\n' + dateStr : ''}`
+          : (dateStr || 'Неизвестно');
         return `<div class="sb-item" onclick="goTo(${r.id})">
           <div style="flex:1;min-width:0;overflow:hidden">
-            <div class="sb-code" style="color:var(--tx)">${esc(r.decimal_number||'—')}</div>
-            <div style="font-size:10px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${dateStr}${author ? ' · ' + esc(author) : ''}</div>
+            <div class="sb-fav-code" style="margin-left:0">${esc(r.decimal_number||'—')}</div>
+            ${dateStr ? `<div class="sb-code">${dateStr}</div>` : ''}
           </div>
+          <div class="avatar" data-tooltip="${esc(tooltipText)}" style="background:${bgColor};flex-shrink:0">${esc(initials)}</div>
         </div>`;
       }).join('')
     : `<div style="padding:4px 12px;font-size:11px;color:var(--tx3)">—</div>`;
@@ -1780,6 +1787,14 @@ function avatarColor(name) {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0;
   return colors[Math.abs(h) % colors.length];
+}
+
+function avatarInitials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  return parts.length >= 2
+    ? (parts[0][0] + parts[1][0]).toUpperCase()
+    : parts[0].charAt(0).toUpperCase();
 }
 
 /* ═══════════════════════════════════
