@@ -39,8 +39,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .conn-dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0}
 .conn-dot.ok{background:var(--grn)}
 .conn-lbl{font-size:11px;color:var(--tx3)}
-.topbar-status{display:flex;align-items:center;gap:6px;align-self:center;padding:0}
 .ver-footer{position:fixed;right:10px;bottom:6px;font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:1px 7px;z-index:10}
+.conn-footer{position:fixed;left:10px;bottom:6px;display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:1px 7px;z-index:10}
 
 /* ── SIDEBAR ── */
 .sidebar{grid-column:1;grid-row:1/-1;background:var(--surf);border-right:1px solid var(--brd);overflow-y:auto;padding:10px 0;display:flex;flex-direction:column;gap:0}
@@ -268,10 +268,6 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
     <button class="tab-btn active" id="tabBtnReg" onclick="switchTab('reg')">Регистрация номера</button>
     <button class="tab-btn" id="tabBtnStruct" onclick="switchTab('structure')">Структура изделия</button>
   </div>
-  <div class="topbar-status">
-    <div class="conn-dot" id="connDot"></div>
-    <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
-  </div>
 </header>
 
 <!-- SIDEBAR -->
@@ -408,7 +404,11 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 </main>
 </div>
 
-<footer class="ver-footer">v0.67</footer>
+<div class="conn-footer">
+  <div class="conn-dot" id="connDot"></div>
+  <span id="connLbl">Ожидание Grist…</span>
+</div>
+<footer class="ver-footer">v0.68</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -418,7 +418,7 @@ const S = {
   activeTab: 'reg',  // 'reg' (Регистрация номера) | 'structure' (Структура изделия)
   classifier: [],   // ESKD_Classifier records
   components: [],   // Components records
-  recent: [],
+  currentUser: null,
   searchQ: '',
   selResult: null,
   // browse
@@ -446,18 +446,18 @@ const S = {
 const ICONS = {'31':'⚡','32':'🔌','33':'💡','34':'🔧','35':'⚙️','36':'🛢️','37':'🔩','38':'📐','39':'🧲','40':'🌡️','41':'🖥️','42':'🏗️','43':'🔬','44':'🚗','45':'✈️','46':'🚢','47':'📦','48':'🔑','49':'🧪','50':'🔭'};
 const PALETTE = ['#1E4ED8','#0D6E4E','#92400E','#991B1B','#5B21B6','#0369A1','#166534','#92400E'];
 
-const CACHE_KEY = 'decimal_widget_classifier_v2'; // bump после изменения формата
+const CACHE_KEY = 'decimal_widget_classifier_v3'; // bump после изменения формата
+const IMAGE_API = 'https://db.mp-lab.ru/fileAPI/download/';
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
-/* Карта картинок: code → image_base64 (загружается ленивыми способами) */
+/* Карта картинок: code → URL (заполняется из image_file_id) */
 const imagesByCode = {};
 
-/* Извлечь картинки из массива записей в отдельную Map, очистить поле в самих записях */
+/* Заполнить карту картинок из массива записей классификатора */
 function extractImages(records) {
   records.forEach(r => {
-    if (r.image_base64 && typeof r.image_base64 === 'string' && r.image_base64.length > 20) {
-      imagesByCode[r.code] = r.image_base64;
-      r.image_base64 = ''; // освобождаем память записи (кэш будет лёгкий)
+    if (r.image_file_id && r.image_file_id > 0) {
+      imagesByCode[r.code] = IMAGE_API + r.image_file_id;
     }
   });
 }
@@ -473,7 +473,7 @@ function loadFromCache() {
     S.classifier = data.classifier;
     const ageSec = Math.round((Date.now() - data.timestamp) / 1000);
     console.log(`[cache] классификатор: ${S.classifier.length} записей, возраст ${ageSec}с`);
-    setConn(true, `${S.classifier.length} видов (кэш)`);
+    setConn(true, `Загрузка…`);
     return true;
   } catch(e) {
     console.warn('[cache] чтение неудачно:', e);
@@ -483,13 +483,11 @@ function loadFromCache() {
 
 function saveToCache() {
   try {
-    // Сохраняем без image_base64 — кэш всегда лёгкий
-    const light = S.classifier.map(r => ({...r, image_base64: ''}));
     localStorage.setItem(CACHE_KEY, JSON.stringify({
       timestamp: Date.now(),
-      classifier: light,
+      classifier: S.classifier,
     }));
-    console.log('[cache] сохранён (без картинок)');
+    console.log('[cache] сохранён');
   } catch(e) {
     console.warn('[cache] не удалось сохранить:', e);
   }
@@ -512,14 +510,10 @@ function initGrist() {
   grist.ready({ requiredAccess: 'full' });
   setConn(true, 'Загрузка…');
 
+  grist.getUserProfile().then(p => { S.currentUser = p; }).catch(() => {});
+
   grist.onRecords(() => {
     if (firstComponentsLoadDone) loadComponents();
-  });
-
-  grist.onOptions(opts => {
-    if (!opts) return;
-    if (opts.recent) S.recent = opts.recent;
-    renderSidebar();
   });
 
   // Мгновенный показ из кэша (отложенно)
@@ -546,6 +540,7 @@ async function loadComponents() {
     refreshPrefixList();
     firstComponentsLoadDone = true;
     console.log(`[Components] ${S.components.length} за ${Math.round(performance.now()-t0)}мс`);
+    setConn(true, `${S.components.length} компонентов`);
     renderAll();
   } catch(e) {
     console.error('Ошибка загрузки Components:', e);
@@ -592,7 +587,7 @@ async function loadClassifier() {
     extractImages(S.classifier);
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
     console.log(`[ESKD_Classifier full] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
-    setConn(true, `${S.classifier.length} видов`);
+    setConn(true, `Загрузка…`);
     setTimeout(saveToCache, 0);
     renderAll();
     return;
@@ -618,7 +613,7 @@ async function loadClassifier() {
     S.classifier = light;
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
     console.log(`[ESKD_Classifier full SQL] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
-    setConn(true, `${S.classifier.length} видов`);
+    setConn(true, `Загрузка…`);
     setTimeout(saveToCache, 0);
     renderAll();
     fetchAllImagesInBackground();
@@ -638,7 +633,7 @@ async function loadClassifier() {
     extractImages(S.classifier);
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
     console.log(`[ESKD_Classifier fetchTable] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
-    setConn(true, `${S.classifier.length} видов`);
+    setConn(true, `Загрузка…`);
     setTimeout(saveToCache, 0);
     renderAll();
   } catch(e) {
@@ -822,18 +817,17 @@ async function fetchAllImagesInBackground() {
   if (!S.accessToken || !S.tokenBaseUrl) return;
   const t0 = performance.now();
   try {
-    const sql = "SELECT code, image_base64 FROM ESKD_Classifier WHERE image_base64 != ''";
+    const sql = "SELECT code, image_file_id FROM ESKD_Classifier WHERE image_file_id != 0";
     const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&auth=${S.accessToken}`;
     const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
     if (!res.ok) return;
     const data = await res.json();
     (data.records || []).forEach(r => {
       const code = r.fields?.code ?? r.code;
-      const img = r.fields?.image_base64 ?? r.image_base64;
-      if (code && img) imagesByCode[code] = img;
+      const fid = r.fields?.image_file_id ?? r.image_file_id;
+      if (code && fid && fid > 0) imagesByCode[code] = IMAGE_API + fid;
     });
     console.log(`[images bg] ${Object.keys(imagesByCode).length} картинок за ${Math.round(performance.now()-t0)}мс`);
-    // Если сейчас отображается summary с этой картинкой — обновим
     renderBrowseSummary();
   } catch(e) {
     console.warn('[images bg] не сработали:', e.message);
@@ -845,15 +839,16 @@ async function fetchImageForCode(code) {
   if (imagesByCode[code] !== undefined) return imagesByCode[code];
   if (!S.accessToken || !S.tokenBaseUrl) return null;
   try {
-    const sql = `SELECT image_base64 FROM ESKD_Classifier WHERE code = ?`;
+    const sql = `SELECT image_file_id FROM ESKD_Classifier WHERE code = ?`;
     const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&args=${encodeURIComponent(JSON.stringify([code]))}&auth=${S.accessToken}`;
     const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
     if (!res.ok) return null;
     const data = await res.json();
     const rec = (data.records || [])[0];
-    const img = rec?.fields?.image_base64 ?? rec?.image_base64 ?? '';
-    imagesByCode[code] = img;
-    return img;
+    const fid = rec?.fields?.image_file_id ?? rec?.image_file_id ?? 0;
+    const imgUrl = fid > 0 ? IMAGE_API + fid : '';
+    imagesByCode[code] = imgUrl;
+    return imgUrl || null;
   } catch(e) {
     return null;
   }
@@ -862,11 +857,9 @@ async function fetchImageForCode(code) {
 /* Получить URL картинки уровня — из карты или асинхронной догрузкой */
 function getImageUrl(rec) {
   if (!rec) return null;
-  // Сначала смотрим в Map (которую заполняет extractImages или фоновая догрузка)
   const cached = imagesByCode[rec.code];
-  if (cached && cached.length > 20) return cached;
-  // Если в самой записи (для совместимости со старыми путями)
-  if (rec.image_base64 && rec.image_base64.length > 20) return rec.image_base64;
+  if (cached) return cached;
+  if (rec.image_file_id && rec.image_file_id > 0) return IMAGE_API + rec.image_file_id;
   return null;
 }
 
@@ -1003,30 +996,7 @@ function selectResult(r) {
     S.relRootId = null;
   }
   S.selResult = r;
-  addRecent(r);
   render();
-}
-
-function addRecent(r) {
-  S.recent = [r, ...S.recent.filter(x => x.id !== r.id)].slice(0, 8);
-  renderSidebar();
-  saveOptions();
-}
-
-function saveOptions() {
-  if (typeof grist === 'undefined') return;
-  try {
-    grist.setOptions({
-      recent: S.recent.map(r => ({
-        id: r.id,
-        decimal_number: r.decimal_number,
-        name: r.name,
-        eskd_kind_name: r.eskd_kind_name,
-      })),
-    });
-  } catch(e) {
-    console.warn('Failed to save options:', e);
-  }
 }
 
 function closeRel() { S.selResult = null; render(); }
@@ -1074,6 +1044,13 @@ function computeTopKinds() {
     .slice(0, 5);
 }
 
+function computeRecentComponents() {
+  return [...S.components]
+    .filter(c => c.created_at && c.created_at > 0)
+    .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+    .slice(0, 8);
+}
+
 function renderSidebar() {
   const favEl = document.getElementById('favList');
   const recEl = document.getElementById('recentList');
@@ -1084,18 +1061,24 @@ function renderSidebar() {
       </div>`).join('')
     : `<div style="padding:4px 12px;font-size:11px;color:var(--tx3)">Нет данных</div>`;
 
-  recEl.innerHTML = S.recent.length
-    ? S.recent.map(r => `<div class="sb-item" onclick="goTo(${r.id})">
-        <span class="sb-code">${esc(r.decimal_number||'—')}</span>
-        <span class="sb-name">${esc(r.name||'—')}</span>
-      </div>`).join('')
+  const recent = computeRecentComponents();
+  recEl.innerHTML = recent.length
+    ? recent.map(r => {
+        const dateStr = r.created_at ? new Date(r.created_at * 1000).toLocaleDateString('ru-RU') : '';
+        const author = r.created_by || '';
+        return `<div class="sb-item" onclick="goTo(${r.id})">
+          <div style="flex:1;min-width:0;overflow:hidden">
+            <div class="sb-code" style="color:var(--tx)">${esc(r.decimal_number||'—')}</div>
+            <div style="font-size:10px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${dateStr}${author ? ' · ' + esc(author) : ''}</div>
+          </div>
+        </div>`;
+      }).join('')
     : `<div style="padding:4px 12px;font-size:11px;color:var(--tx3)">—</div>`;
 }
 
 async function goTo(id) {
   const r = S.components.find(x => x.id === id);
   if (!r) return;
-  addRecent(r);
   if (S.activeTab === 'reg') {
     await openKindForComponent(r);
   } else {
@@ -1922,11 +1905,12 @@ async function addComponent() {
     org_prefix: prefix,
     primary_use: S.selUse ? S.selUse.id : 0,
     primary_use_name: S.selUse ? S.selUse.name : (useText || ''),
+    created_by: S.currentUser?.name || S.currentUser?.email || '',
+    created_at: Math.floor(Date.now() / 1000),
   };
   S.components.push(optimisticRecord);
   if (!serialCache[cacheKey]) serialCache[cacheKey] = new Set();
   serialCache[cacheKey].add(serial);
-  S.recent.unshift({ id: tempId, decimal_number: dn, name, eskd_kind_name: kind.name });
 
   renderRegistered();
   renderSidebar();
@@ -1974,7 +1958,6 @@ async function addComponent() {
     // Откат
     S.components = S.components.filter(c => c.id !== tempId);
     if (serialCache[cacheKey]) serialCache[cacheKey].delete(serial);
-    S.recent = S.recent.filter(r => r.id !== tempId);
     renderRegistered();
     renderSidebar();
 
