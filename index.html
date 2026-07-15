@@ -118,7 +118,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .cls-list{display:flex;flex-direction:column;gap:4px}
 .cls-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--brd);border-radius:var(--r);cursor:pointer;background:var(--surf);transition:border-color .15s,background .15s}
 .cls-row:hover{border-color:var(--brd2);background:var(--surf3)}
-.cls-row.sel{border-color:var(--acc);background:var(--acc-bg)}
+.cls-row.sel{border-color:#16b378;background:#eaf8f3}
 .cls-row-img{height:44px;width:44px;object-fit:contain;flex-shrink:0;border-radius:3pt;background:var(--surf2)}
 .cls-row-code{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--tx);flex-shrink:0;min-width:44px}
 .cls-row-name{font-size:13px;color:var(--tx);flex:1;line-height:1.3}
@@ -127,7 +127,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .sub-list{display:flex;flex-direction:column;gap:3px}
 .sub-row{display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid var(--brd);border-radius:var(--r);cursor:pointer;background:var(--surf);transition:border-color .15s,background .15s}
 .sub-row:hover{border-color:var(--brd2);background:var(--surf3)}
-.sub-row.sel{border-color:var(--acc);background:var(--acc-bg)}
+.sub-row.sel{border-color:#16b378;background:#eaf8f3}
 .sub-row-code{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--tx);flex-shrink:0;min-width:56px}
 .sub-row-name{font-size:12px;color:var(--tx);flex:1;line-height:1.3}
 
@@ -408,7 +408,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
     <div class="panel" id="pRegistered" style="display:none">
       <div class="ph">
         <span class="ph-title">Зарегистрированные компоненты</span>
-        <span class="tag tag-blue" id="regCount"></span>
+        <span class="tag tag-green" id="regCount"></span>
       </div>
       <div id="regBody"></div>
     </div>
@@ -421,7 +421,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.76</footer>
+<footer class="ver-footer">v0.77</footer>
 
 <script>
 /* ═══════════════════════════════════
