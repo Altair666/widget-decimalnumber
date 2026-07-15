@@ -85,15 +85,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-root{display:flex;flex-direction:column;gap:2px}
 .tree-node{display:flex;align-items:center;gap:6px;padding:0 8px;height:30px;border-radius:var(--r);border:1px solid transparent;transition:background .1s,border-color .1s;box-sizing:border-box}
 .tree-node:hover{background:var(--surf2)}
-.tree-node.target{background:var(--acc-bg);border-color:var(--acc);box-shadow:0 0 0 1px var(--acc-brd)}
-.tree-node.target:hover{background:var(--acc-bg)}
+.tree-node.target{background:#eaf8f3;border-color:#16b378;box-shadow:0 0 0 1px #a3dfc9}
+.tree-node.target:hover{background:#eaf8f3}
 .tree-node.current{background:var(--warn-bg);border-color:var(--warn-brd)}
 .tree-toggle{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:none;background:transparent;color:var(--tx3);cursor:pointer;flex-shrink:0;padding:0;border-radius:4pt}
 .tree-toggle:hover{background:var(--brd);color:var(--tx)}
 .tree-toggle.empty{cursor:default;pointer-events:none}
 .tree-content{display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer}
 .tree-count{font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:0 6px;line-height:14px;min-width:18px;text-align:center;flex-shrink:0}
-.tree-node.target .tree-count{background:var(--acc);color:#fff;border-color:var(--acc)}
+.tree-node.target .tree-count{background:#16b378;color:#fff;border-color:#16b378}
 
 /* ── REL TREE — старые элементы для обратной совместимости ── */
 .rel-dn{font-family:var(--mono);font-size:11px;color:var(--tx);flex-shrink:0}
@@ -421,7 +421,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.75</footer>
+<footer class="ver-footer">v0.76</footer>
 
 <script>
 /* ═══════════════════════════════════
