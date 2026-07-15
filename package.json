@@ -2,7 +2,7 @@
   "name": "@gristlabs/widget-decimalnumber",
   "description": "БД деталей по ОК ЕСКД",
   "homePage": "https://github.com/gristlabs/grist-widget",
-  "version": "0.74.0",
+  "version": "0.75.0",
   "grist": {
     "name": "Decimal Number",
     "url": "https://gristlabs.github.io/grist-widget/widget-decimalnumber/index.html",

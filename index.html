@@ -69,16 +69,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 /* ── SEARCH RESULTS ── */
 .res-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);cursor:pointer;transition:background .1s;margin:0 -8px}
-.res-item:hover{background:var(--acc-bg)}
-.res-item.sel{background:var(--acc-bg);border-left:2px solid var(--acc);padding-left:6px}
+.res-item:hover{background:#eaf8f3}
+.res-item.sel{background:#eaf8f3;border-left:2px solid #16b378;padding-left:6px}
 /* Чип выбранного результата (свёрнутое состояние) */
-.sel-chip{display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:var(--r);cursor:pointer;transition:background .1s}
-.sel-chip:hover{background:#e0e7ff}
+.sel-chip{display:flex;align-items:center;gap:8px;padding:5px 8px;background:#eaf8f3;border:1px solid #a3dfc9;border-radius:var(--r);cursor:pointer;transition:background .1s}
+.sel-chip:hover{background:#d4f1e6}
 .sel-chip-name{font-size:12px;color:var(--tx);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* Кнопка «развернуть все результаты» в хедере панели */
-.btn-expand-results{font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;padding:0 4px;display:flex;align-items:center;gap:3px;opacity:.8}
-.btn-expand-results:hover{opacity:1}
-.res-dn{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--acc);background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:4pt;padding:2px 6px;flex-shrink:0;min-width:96px;text-align:center}
+.sel-chip-expand{font-size:11px;color:#16b378;display:flex;align-items:center;gap:3px;flex-shrink:0;opacity:.8}
+.res-dn{font-family:var(--mono);font-size:11px;font-weight:500;color:#16b378;background:#eaf8f3;border:1px solid #a3dfc9;border-radius:4pt;padding:2px 6px;flex-shrink:0;min-width:96px;text-align:center}
+.tag-green{background:#eaf8f3;color:#16b378}
 .res-name{font-size:12px;color:var(--tx);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .res-kind{font-size:11px;color:var(--tx3);flex-shrink:0;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -422,7 +421,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.74</footer>
+<footer class="ver-footer">v0.75</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -1174,21 +1173,21 @@ function renderSearch() {
   if (S.selResult && !S.searchExpanded) {
     titleEl.textContent = 'Выбрано';
     const r = S.selResult;
-    countEl.innerHTML = `<button class="btn-expand-results" onclick="expandSearchResults()" title="Все результаты">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-      ${results.length}
-    </button>`;
+    countEl.innerHTML = `<span class="tag tag-green">${results.length}</span>`;
     body.innerHTML = `<div class="sel-chip" onclick="expandSearchResults()">
       <span class="res-dn">${esc(r.decimal_number||'—')}</span>
       <span class="sel-chip-name">${esc(r.name||'—')}</span>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:.4"><polyline points="6 9 12 15 18 9"/></svg>
+      <span class="sel-chip-expand">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        развернуть
+      </span>
     </div>`;
     return;
   }
 
   // Развёрнутый вид: полный список
   titleEl.textContent = 'Результаты поиска';
-  countEl.innerHTML = `<span class="tag tag-blue">${results.length}</span>`;
+  countEl.innerHTML = `<span class="tag tag-green">${results.length}</span>`;
   if (!results.length) {
     body.innerHTML = `<div class="empty"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Ничего не найдено</div>`;
     return;
