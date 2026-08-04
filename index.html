@@ -215,7 +215,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 .cell-edit-input{flex:1;height:22px;border:1px solid var(--acc);border-radius:4pt;padding:0 6px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;background:var(--surf);min-width:0;text-align:center}
 .cell-edit-input.mono{font-family:var(--mono);font-size:11px;color:var(--acc)}
 .cell-edit-wrap{position:relative;flex:1;min-width:0}
-.cell-edit-drop{position:absolute;top:24px;left:0;right:0;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);z-index:200;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12);text-align:left;display:none}
+.cell-edit-drop{position:fixed;top:0;left:0;width:200px;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);z-index:200;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12);text-align:left;display:none}
 .cell-edit-drop.on{display:block}
 
 /* Reset td padding/alignment for editable cells to keep row heights uniform */
@@ -421,7 +421,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.77</footer>
+<footer class="ver-footer">v0.78</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -1711,13 +1711,17 @@ async function saveEditCompName(rowId) {
 
 function positionDrop(drop) {
   requestAnimationFrame(() => {
-    const rect = drop.getBoundingClientRect();
-    if (rect.bottom > window.innerHeight - 8) {
+    const wrap = drop.parentElement;
+    const r = wrap.getBoundingClientRect();
+    drop.style.left = r.left + 'px';
+    drop.style.width = r.width + 'px';
+    const dropH = Math.min(180, drop.scrollHeight || 180);
+    if (r.bottom + dropH > window.innerHeight - 8) {
       drop.style.top = 'auto';
-      drop.style.bottom = '100%';
+      drop.style.bottom = (window.innerHeight - r.top) + 'px';
     } else {
-      drop.style.top = '';
-      drop.style.bottom = '';
+      drop.style.top = r.bottom + 'px';
+      drop.style.bottom = 'auto';
     }
   });
 }
@@ -1730,7 +1734,7 @@ function onEditDNInput(rowId) {
   document.getElementById(`editSaveBtn-${rowId}`).disabled = true;
 
   const drop = document.getElementById(`editDNDrop-${rowId}`);
-  if (!q) { drop.className = 'cell-edit-drop'; drop.style.top = ''; drop.style.bottom = ''; return; }
+  if (!q) { drop.className = 'cell-edit-drop'; drop.style.top = 'auto'; drop.style.bottom = 'auto'; return; }
 
   const items = S.components.filter(r =>
     r.id !== rowId && // нельзя сослаться на себя
@@ -1738,7 +1742,7 @@ function onEditDNInput(rowId) {
      (r.name||'').toLowerCase().includes(q))
   ).slice(0, 20);
 
-  if (!items.length) { drop.className = 'cell-edit-drop'; drop.style.top = ''; drop.style.bottom = ''; return; }
+  if (!items.length) { drop.className = 'cell-edit-drop'; drop.style.top = 'auto'; drop.style.bottom = 'auto'; return; }
 
   drop.innerHTML = items.map((r,i) => `
     <div class="ac-item" data-idx="${i}" style="text-align:left">
