@@ -205,6 +205,8 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 .cell-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
 .cell-text.reg-use-dn{font-family:var(--mono);font-size:11px;color:var(--acc)}
 .cell-text.reg-use-name{font-size:12px;color:var(--tx2)}
+.reg-sort-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:none;border-radius:3px;background:transparent;color:var(--tx3);cursor:pointer;padding:0;flex-shrink:0;transition:all .1s}
+.reg-sort-btn:hover{background:var(--grn-bg);color:var(--grn)}
 .cell-edit-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid transparent;border-radius:4pt;background:transparent;color:#E07B1F;cursor:pointer;flex-shrink:0;transition:all .1s;padding:0}
 .cell-edit-btn:hover{background:#FFF4E6;color:#C5651A;border-color:#F5D4A0}
 .cell-edit-btn.save{color:var(--grn)}
@@ -421,7 +423,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.79</footer>
+<footer class="ver-footer">v0.80</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -455,6 +457,7 @@ const S = {
   docId: null,       // id документа Grist (для построения URL вложений)
   accessToken: null, // токен для доступа к API (вложения)
   tokenBaseUrl: null,// базовый URL для API с токеном
+  regSort: 'desc',   // 'asc' | 'desc' — сортировка по децимальному номеру
 };
 
 const ICONS = {'31':'⚡','32':'🔌','33':'💡','34':'🔧','35':'⚙️','36':'🛢️','37':'🔩','38':'📐','39':'🧲','40':'🌡️','41':'🖥️','42':'🏗️','43':'🔬','44':'🚗','45':'✈️','46':'🚢','47':'📦','48':'🔑','49':'🧪','50':'🔭'};
@@ -1520,7 +1523,10 @@ function renderRegistered() {
     const dn = c.decimal_number || '';
     // Совпадение по сегменту: либо в начале "685621.", либо после точки ".685621."
     return dn.startsWith(kindCode + '.') || dn.includes('.' + kindCode + '.');
-  }).sort((a,b) => (a.decimal_number||'').localeCompare(b.decimal_number||''));
+  }).sort((a,b) => {
+    const cmp = (a.decimal_number||'').localeCompare(b.decimal_number||'');
+    return S.regSort === 'desc' ? -cmp : cmp;
+  });
 
   panel.style.display = 'block';
   count.textContent = items.length;
@@ -1549,7 +1555,16 @@ function renderRegistered() {
         <th rowspan="2" style="vertical-align:middle;text-align:center">Создан</th>
       </tr>
       <tr class="sub-header">
-        <th style="border-right:1px solid var(--brd)">Децимальный номер</th>
+        <th style="border-right:1px solid var(--brd)">
+          <span style="display:inline-flex;align-items:center;gap:4px">
+            Децимальный номер
+            <button class="reg-sort-btn" onclick="toggleRegSort()" title="${S.regSort==='desc'?'Сортировка: убывание (нажмите для возрастания)':'Сортировка: возрастание (нажмите для убывания)'}">
+              ${S.regSort==='desc'
+                ? `<svg width="10" height="12" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 1v10M1 7l4 4 4-4"/></svg>`
+                : `<svg width="10" height="12" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 11V1M1 5l4-4 4 4"/></svg>`}
+            </button>
+          </span>
+        </th>
         <th style="border-right:1px solid var(--brd2)">Наименование</th>
         <th style="border-right:1px solid var(--brd)">Децимальный номер</th>
         <th style="border-right:1px solid var(--brd2)">Наименование</th>
@@ -1668,6 +1683,11 @@ function renderRegistered() {
 /* ═══════════════════════════════════
    INLINE EDIT — primary_use
 ═══════════════════════════════════ */
+function toggleRegSort() {
+  S.regSort = S.regSort === 'desc' ? 'asc' : 'desc';
+  renderRegistered();
+}
+
 function startEditDN(rowId) {
   S.editing = { rowId, mode: 'ref', selUse: null };
   renderRegistered();
