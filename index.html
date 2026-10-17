@@ -423,7 +423,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.80</footer>
+<footer class="ver-footer">v0.81</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -2002,8 +2002,10 @@ async function addComponent() {
   const useText = document.getElementById('useInput').value.trim();
   if (S.selUse) {
     fields.primary_use = S.selUse.id;
-  } else if (useText) {
-    fields.primary_use_name = useText;
+    fields.primary_use_name = '';
+  } else {
+    fields.primary_use = 0;
+    fields.primary_use_name = useText || '';
   }
 
   // Оптимистичное добавление
