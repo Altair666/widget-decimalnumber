@@ -169,6 +169,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .formed-num:focus{background:var(--grn-bg);border-color:var(--grn-brd)}
 
 .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;background:#16b378;color:#fff;border:none;border-radius:var(--r);padding:9px 16px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:opacity .15s,transform .1s;width:100%}
+.btn-del-last{display:flex;align-items:center;justify-content:center;gap:6px;background:transparent;color:var(--red);border:1px solid var(--red-brd);border-radius:var(--r);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:background .15s,opacity .15s;white-space:nowrap;flex-shrink:0}
+.btn-del-last:hover:not(:disabled){background:var(--red-bg)}
+.btn-del-last:disabled{opacity:.35;cursor:not-allowed}
 .btn-add:hover{opacity:.88}
 .btn-add:active{transform:scale(.98)}
 .btn-add:disabled{opacity:.35;cursor:not-allowed}
@@ -398,10 +401,16 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
           <span class="form-hint" id="useHint">Не выбрано</span>
         </div>
 
-        <button class="btn-add" id="btnAdd" disabled onclick="addComponent()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-          Зарегистрировать номер
-        </button>
+        <div style="display:flex;gap:10px;align-items:stretch">
+          <button class="btn-add" id="btnAdd" style="flex:1" disabled onclick="addComponent()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Зарегистрировать номер
+          </button>
+          <button class="btn-del-last" id="btnDeleteLast" disabled onclick="deleteLastAdded()" title="Нет добавленных номеров">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            Удалить последний
+          </button>
+        </div>
 
       </div>
     </div>
@@ -423,7 +432,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.81</footer>
+<footer class="ver-footer">v0.82</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -1051,6 +1060,7 @@ function render() {
   } else {
     renderBrowse();
     updatePreview();
+    updateDeleteBtn();
   }
 }
 
@@ -2030,6 +2040,7 @@ async function addComponent() {
 
   renderRegistered();
   renderSidebar();
+  updateDeleteBtn();
 
   try {
     if (typeof grist !== 'undefined') {
@@ -2080,6 +2091,51 @@ async function addComponent() {
     btn.disabled = false;
     btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Зарегистрировать номер';
     alert('Ошибка при сохранении: ' + e.message);
+  }
+}
+
+/* ═══════════════════════════════════
+   DELETE LAST ADDED COMPONENT
+═══════════════════════════════════ */
+function findLastAdded() {
+  let last = null;
+  S.components.forEach(c => {
+    if (!c.created_at || c.created_at <= 0) return;
+    if (!last || c.created_at > last.created_at || (c.created_at === last.created_at && c.id > last.id)) last = c;
+  });
+  return last;
+}
+
+function updateDeleteBtn() {
+  const btn = document.getElementById('btnDeleteLast');
+  if (!btn) return;
+  const last = findLastAdded();
+  btn.disabled = !last;
+  btn.title = last
+    ? `Удалить последний добавленный номер:\n${last.decimal_number || ''} — ${last.name || ''}`
+    : 'Нет добавленных номеров';
+}
+
+async function deleteLastAdded() {
+  const last = findLastAdded();
+  if (!last) return;
+  const label = `${last.decimal_number || ''} — ${last.name || ''}`.trim();
+  if (!confirm(`Удалить последний добавленный номер?\n\n${label}`)) return;
+
+  const idx = S.components.findIndex(c => c.id === last.id);
+  if (idx >= 0) S.components.splice(idx, 1);
+  computeNextSerials();
+  renderAll();
+  updateDeleteBtn();
+
+  try {
+    if (typeof grist !== 'undefined') {
+      await grist.selectedTable.destroy(last.id);
+      loadComponents();
+    }
+  } catch(e) {
+    alert('Ошибка при удалении: ' + e.message);
+    loadComponents();
   }
 }
 
