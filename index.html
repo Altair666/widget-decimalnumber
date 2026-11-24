@@ -172,6 +172,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-del-last{display:flex;align-items:center;justify-content:center;gap:6px;background:transparent;color:var(--red);border:1px solid var(--red-brd);border-radius:var(--r);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:background .15s,opacity .15s;white-space:nowrap;flex-shrink:0}
 .btn-del-last:hover:not(:disabled){background:var(--red-bg)}
 .btn-del-last:disabled{opacity:.35;cursor:not-allowed}
+.modal-overlay{position:fixed;inset:0;background:rgba(24,23,15,.35);z-index:500;display:flex;align-items:center;justify-content:center}
+.modal-box{background:var(--surf);border:1px solid var(--brd);border-radius:6px;box-shadow:0 12px 32px rgba(0,0,0,.22);padding:16px;width:min(360px,calc(100% - 40px))}
+.modal-title{font-size:12px;font-weight:600;color:var(--tx);margin-bottom:8px}
+.modal-text{font-family:var(--mono);font-size:12px;color:var(--tx2);word-break:break-word;margin-bottom:14px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end}
+.modal-btn{font-family:inherit;font-size:12px;font-weight:500;border-radius:var(--r);padding:7px 14px;cursor:pointer;border:1px solid var(--brd);background:var(--surf2);color:var(--tx);transition:background .1s}
+.modal-btn.cancel:hover{background:var(--surf3)}
+.modal-btn.danger{background:var(--red);border-color:var(--red);color:#fff}
+.modal-btn.danger:hover{opacity:.9}
 .btn-add:hover{opacity:.88}
 .btn-add:active{transform:scale(.98)}
 .btn-add:disabled{opacity:.35;cursor:not-allowed}
@@ -189,10 +198,22 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 
 /* ── REGISTERED TABLE ── */
-.reg-table{width:100%;border-collapse:collapse;font-size:12px}
-.reg-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;border-bottom:2px solid var(--brd);text-align:center;background:var(--surf2)}
-.reg-table th.group-header{border-bottom:2px solid var(--brd2);padding-bottom:2px;text-align:center}
-.reg-table .sub-header th{font-size:10px;color:var(--tx3);font-weight:500;padding:3px 8px;border-bottom:1px solid var(--brd);background:var(--surf2);text-align:center;white-space:nowrap}
+/* Пролистывание реестра как в notification_numbers: единственный скролл-контейнер —
+   .main, sticky-цепочка ph(0) → filter-bar(32) → thead(77/101). НЕ давать #regBody
+   overflow, иначе sticky-контекст уедет внутрь и шапка перестанет быть липкой. */
+#pRegistered{overflow:visible}
+#pRegistered>.ph{position:sticky;top:0;z-index:5}
+.reg-filter-bar{padding:8px 12px;background:var(--surf2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px;position:sticky;top:32px;z-index:4}
+.reg-filter-wrap{position:relative;flex:1}
+.reg-filter-input{width:100%;height:28px;border:1px solid var(--brd);border-radius:var(--r);padding:0 9px 0 28px;font-family:inherit;font-size:12px;background:#fff;outline:none;color:var(--tx)}
+.reg-filter-input:focus{border-color:#16b378}
+.reg-filter-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none}
+.reg-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+.reg-table th{position:sticky;top:77px;z-index:3;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;text-align:center;background:var(--surf2);white-space:nowrap;box-sizing:border-box;height:24px}
+.reg-table th::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--brd2)}
+.reg-table th[rowspan]{height:44px}
+.reg-table .sub-header th{top:101px;height:20px;font-size:10px;color:var(--tx3);font-weight:500;padding:3px 8px;text-align:center;white-space:nowrap}
+.reg-table .sub-header th::after{height:1px;background:var(--brd)}
 .reg-table td{padding:6px 8px;border-bottom:1px solid var(--brd);vertical-align:top;text-align:center}
 .reg-table tr:last-child td{border-bottom:none}
 .reg-table tr:hover td{background:var(--surf2)}
@@ -282,7 +303,8 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 <header class="topbar">
   <div class="tabbar">
     <button class="tab-btn active" id="tabBtnReg" onclick="switchTab('reg')">Регистрация номера</button>
-    <button class="tab-btn" id="tabBtnStruct" onclick="switchTab('structure')">Структура изделия</button>
+    <button class="tab-btn" id="tabBtnStruct" onclick="switchTab('structure')">Применяемость компонентов</button>
+    <button class="tab-btn" id="tabBtnTree" onclick="switchTab('tree')">Структура изделия</button>
   </div>
 </header>
 
@@ -334,6 +356,14 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
       <div class="pb" id="relBody"></div>
     </div>
 
+  </div>
+
+  <!-- TREE MODE (вкладка «Структура изделия») -->
+  <div id="pTree" style="display:none;flex-direction:column;gap:0">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Структура изделия</span></div>
+      <div class="reg-empty" style="padding:48px 16px">Раздел в разработке</div>
+    </div>
   </div>
 
   <!-- BROWSE MODE -->
@@ -406,7 +436,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
             Зарегистрировать номер
           </button>
-          <button class="btn-del-last" id="btnDeleteLast" disabled onclick="deleteLastAdded()" title="Нет добавленных номеров">
+          <button class="btn-del-last" id="btnDeleteLast" disabled onclick="deleteLastAdded()" title="Выберите вид в классификаторе">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
             Удалить последний
           </button>
@@ -421,6 +451,12 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
         <span class="ph-title">Зарегистрированные компоненты</span>
         <span class="tag tag-green" id="regCount"></span>
       </div>
+      <div class="reg-filter-bar">
+        <div class="reg-filter-wrap">
+          <svg class="reg-filter-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input class="reg-filter-input" id="regFilterInput" placeholder="Фильтр по номеру, наименованию, применению…" oninput="onRegFilterInput()">
+        </div>
+      </div>
       <div id="regBody"></div>
     </div>
 
@@ -432,14 +468,26 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
   <div class="conn-dot" id="connDot"></div>
   <span id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.82</footer>
+<footer class="ver-footer">v0.83</footer>
+
+<!-- Confirm modal (внутренний, вместо window.confirm) -->
+<div class="modal-overlay" id="modalOverlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-text" id="modalText"></div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeModal(false)">Отмена</button>
+      <button class="modal-btn danger" id="modalOkBtn" onclick="closeModal(true)">Удалить</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ═══════════════════════════════════
    STATE
 ═══════════════════════════════════ */
 const S = {
-  activeTab: 'reg',  // 'reg' (Регистрация номера) | 'structure' (Структура изделия)
+  activeTab: 'reg',  // 'reg' (Регистрация номера) | 'structure' (Применяемость компонентов) | 'tree' (Структура изделия)
   classifier: [],   // ESKD_Classifier records
   components: [],   // Components records
   currentUser: null,
@@ -467,6 +515,8 @@ const S = {
   accessToken: null, // токен для доступа к API (вложения)
   tokenBaseUrl: null,// базовый URL для API с токеном
   regSort: 'desc',   // 'asc' | 'desc' — сортировка по децимальному номеру
+  regFilterQ: '',    // текст фильтра реестра (по номеру/наименованию/применению)
+  regFilterKind: null, // код вида, при котором фильтр установлен (сброс при смене)
 };
 
 const ICONS = {'31':'⚡','32':'🔌','33':'💡','34':'🔧','35':'⚙️','36':'🛢️','37':'🔩','38':'📐','39':'🧲','40':'🌡️','41':'🖥️','42':'🏗️','43':'🔬','44':'🚗','45':'✈️','46':'🚢','47':'📦','48':'🔑','49':'🧪','50':'🔭'};
@@ -1044,6 +1094,7 @@ function switchTab(tab) {
   S.activeTab = tab;
   document.getElementById('tabBtnReg').classList.toggle('active', tab === 'reg');
   document.getElementById('tabBtnStruct').classList.toggle('active', tab === 'structure');
+  document.getElementById('tabBtnTree').classList.toggle('active', tab === 'tree');
   render();
 }
 
@@ -1052,11 +1103,15 @@ function switchTab(tab) {
 ═══════════════════════════════════ */
 function render() {
   const tab2 = S.activeTab === 'structure';
+  const tab3 = S.activeTab === 'tree';
   document.getElementById('pSearch').style.display = tab2 ? 'flex' : 'none';
-  document.getElementById('pBrowse').style.display = tab2 ? 'none' : 'flex';
+  document.getElementById('pBrowse').style.display = (tab2 || tab3) ? 'none' : 'flex';
+  document.getElementById('pTree').style.display = tab3 ? 'flex' : 'none';
   if (tab2) {
     renderSearch();
     if (S.selResult) renderRel(); else document.getElementById('pRel').style.display = 'none';
+  } else if (tab3) {
+    // раздел-заглушка
   } else {
     renderBrowse();
     updatePreview();
@@ -1516,10 +1571,25 @@ async function buildPathForKind(kind) {
 }
 
 /* ── Registered components table ── */
+function getRegisteredItems(kindCode) {
+  return S.components.filter(c => {
+    const dn = c.decimal_number || '';
+    // Совпадение по сегменту: либо в начале "685621.", либо после точки ".685621."
+    return dn.startsWith(kindCode + '.') || dn.includes('.' + kindCode + '.');
+  });
+}
+
+function onRegFilterInput() {
+  const fi = document.getElementById('regFilterInput');
+  S.regFilterQ = fi ? fi.value.trim().toLowerCase() : '';
+  renderRegistered();
+}
+
 function renderRegistered() {
   const panel = document.getElementById('pRegistered');
   const body = document.getElementById('regBody');
   const count = document.getElementById('regCount');
+  updateDeleteBtn();
 
   // показываем только если выбран Вид
   const path = S.browsePath;
@@ -1529,20 +1599,33 @@ function renderRegistered() {
   }
 
   const kindCode = path[path.length-1].code;
-  const items = S.components.filter(c => {
-    const dn = c.decimal_number || '';
-    // Совпадение по сегменту: либо в начале "685621.", либо после точки ".685621."
-    return dn.startsWith(kindCode + '.') || dn.includes('.' + kindCode + '.');
-  }).sort((a,b) => {
+  // сброс фильтра при смене вида
+  if (S.regFilterKind !== kindCode) {
+    S.regFilterKind = kindCode;
+    S.regFilterQ = '';
+    const fi = document.getElementById('regFilterInput');
+    if (fi) fi.value = '';
+  }
+
+  const items = getRegisteredItems(kindCode).sort((a,b) => {
     const cmp = (a.decimal_number||'').localeCompare(b.decimal_number||'');
     return S.regSort === 'desc' ? -cmp : cmp;
   });
 
-  panel.style.display = 'block';
-  count.textContent = items.length;
+  const q = S.regFilterQ || '';
+  const shown = q ? items.filter(c =>
+    (c.decimal_number||'').toLowerCase().includes(q) ||
+    (c.name||'').toLowerCase().includes(q) ||
+    (c.primary_use_name||'').toLowerCase().includes(q)
+  ) : items;
 
-  if (!items.length) {
-    body.innerHTML = `<div class="reg-empty">Нет зарегистрированных компонентов для вида ${kindCode}</div>`;
+  panel.style.display = 'block';
+  count.textContent = shown.length;
+
+  if (!shown.length) {
+    body.innerHTML = items.length
+      ? '<div class="reg-empty">Ничего не найдено по фильтру</div>'
+      : `<div class="reg-empty">Нет зарегистрированных компонентов для вида ${kindCode}</div>`;
     return;
   }
 
@@ -1581,7 +1664,7 @@ function renderRegistered() {
       </tr>
     </thead>
     <tbody>
-      ${items.map(c => {
+      ${shown.map(c => {
         const useId = c.primary_use;
         const linked = (useId && useId > 0) ? byId[useId] : null;
         const useDN = linked ? linked.decimal_number : '';
@@ -2096,47 +2179,61 @@ async function addComponent() {
 
 /* ═══════════════════════════════════
    DELETE LAST ADDED COMPONENT
+   (последний по серийному номеру в выбранном виде)
 ═══════════════════════════════════ */
-function findLastAdded() {
-  let last = null;
-  S.components.forEach(c => {
-    if (!c.created_at || c.created_at <= 0) return;
-    if (!last || c.created_at > last.created_at || (c.created_at === last.created_at && c.id > last.id)) last = c;
-  });
-  return last;
+function findLastInKind() {
+  const path = S.browsePath;
+  if (!path.length || path[path.length-1].level !== 'Вид') return null;
+  const kindCode = path[path.length-1].code;
+  const items = getRegisteredItems(kindCode)
+    .sort((a,b) => (a.decimal_number||'').localeCompare(b.decimal_number||''));
+  return items.length ? items[items.length-1] : null;
+}
+
+/* ═─ внутренняя модалка подтверждения (вместо window.confirm) ── */
+let modalCb = null;
+function showConfirm(title, text, onOk) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalText').textContent = text;
+  modalCb = onOk;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+function closeModal(ok) {
+  document.getElementById('modalOverlay').style.display = 'none';
+  const cb = modalCb; modalCb = null;
+  if (ok && cb) cb();
 }
 
 function updateDeleteBtn() {
   const btn = document.getElementById('btnDeleteLast');
   if (!btn) return;
-  const last = findLastAdded();
+  const last = findLastInKind();
   btn.disabled = !last;
   btn.title = last
-    ? `Удалить последний добавленный номер:\n${last.decimal_number || ''} — ${last.name || ''}`
-    : 'Нет добавленных номеров';
+    ? `Удалить последний номер вида:\n${last.decimal_number || ''} — ${last.name || ''}`
+    : 'Выберите вид в классификаторе';
 }
 
-async function deleteLastAdded() {
-  const last = findLastAdded();
+function deleteLastAdded() {
+  const last = findLastInKind();
   if (!last) return;
   const label = `${last.decimal_number || ''} — ${last.name || ''}`.trim();
-  if (!confirm(`Удалить последний добавленный номер?\n\n${label}`)) return;
+  showConfirm('Удалить последний номер вида?', label, async () => {
+    const idx = S.components.findIndex(c => c.id === last.id);
+    if (idx >= 0) S.components.splice(idx, 1);
+    computeNextSerials();
+    renderAll();
 
-  const idx = S.components.findIndex(c => c.id === last.id);
-  if (idx >= 0) S.components.splice(idx, 1);
-  computeNextSerials();
-  renderAll();
-  updateDeleteBtn();
-
-  try {
-    if (typeof grist !== 'undefined') {
-      await grist.selectedTable.destroy(last.id);
+    try {
+      if (typeof grist !== 'undefined') {
+        await grist.selectedTable.destroy(last.id);
+        loadComponents();
+      }
+    } catch(e) {
+      alert('Ошибка при удалении: ' + e.message);
       loadComponents();
     }
-  } catch(e) {
-    alert('Ошибка при удалении: ' + e.message);
-    loadComponents();
-  }
+  });
 }
 
 /* ═══════════════════════════════════
